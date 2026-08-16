@@ -1,0 +1,103 @@
+\section{Problem 3: First Unique Employee}
+
+\subsection{Problem Overview and Objectives}
+A company records the access log sequence of $n$ employee names. An employee is defined as \textbf{unique} if their name occurs exactly once in the complete sequence.
+
+The objectives are:
+\begin{enumerate}
+    \item Design **Approach 1**: Find the first unique employee name using \textbf{ONLY} the given list and repeated comparisons, using zero additional data structures ($O(1)$ auxiliary space).
+    \item Design **Approach 2**: Find the first unique employee name using an additional data structure (\textbf{Hash Map / Frequency Map}) to optimize time complexity.
+    \item Compare both solutions across time, space, and scalability for small vs. massive datasets.
+\end{enumerate}
+
+\subsection{Specifications}
+\begin{itemize}
+    \item \textbf{Input}: \texttt{employee\_sequence}, a list of $n$ string names ($K = \text{max string length}$).
+    \item \textbf{Output}: The string name of the first unique employee in original sequence order, or \texttt{None} if all names have duplicates.
+    \item \textbf{Constraints}: Approach 1 must allocate zero extra arrays, sets, or hash tables.
+\end{itemize}
+
+\subsection{Formal Algorithm Design}
+
+\begin{algorithm}[H]
+\caption{Approach 1: List-Only Repeated Comparisons ($O(1)$ Auxiliary Space)}
+\begin{algorithmic}[1]
+\Function{FindFirstUniqueListOnly}{$sequence$}
+    \State $n \gets \text{Length}(sequence)$
+    \For{$i \gets 0$ \textbf{to} $n - 1$}
+        \State $target \gets sequence[i]$
+        \State $is\_duplicate \gets \text{False}$
+        \For{$j \gets 0$ \textbf{to} $n - 1$}
+            \If{$i \neq j$ \textbf{and} \Call{CompareStrings}{$target, sequence[j]$} $== 0$}
+                \State $is\_duplicate \gets \text{True}$
+                \State \textbf{break} \Comment{Duplicate found, try next candidate}
+            \EndIf
+        \EndFor
+        \If{\textbf{not} $is\_duplicate$}
+            \State \Return $target$ \Comment{First unique employee found}
+        \EndIf
+    \EndFor
+    \State \Return $\text{None}$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Approach 2: Hash Map / Frequency Map ($O(n \cdot K)$ Time)}
+\begin{algorithmic}[1]
+\Function{FindFirstUniqueHashMap}{$sequence$}
+    \State $freq\_map \gets \{\}$
+    \For{\textbf{each} $name$ \textbf{in} $sequence$} \Comment{Pass 1: Count Frequencies}
+        \State $freq\_map[name] \gets freq\_map.\text{get}(name, 0) + 1$
+    \EndFor
+    \For{\textbf{each} $name$ \textbf{in} $sequence$} \Comment{Pass 2: Preserve Original Sequence Order}
+        \If{$freq\_map[name] == 1$}
+            \State \Return $name$ \Comment{First unique employee found}
+        \EndIf
+    \EndFor
+    \State \Return $\text{None}$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Complexity Analysis and Comparison}
+
+\subsubsection{Approach 1 (List-Only Repeated Comparisons)}
+\begin{itemize}
+    \item \textbf{Best-Case Time Complexity}: $O(n \cdot K)$.
+    Occurs when the first element $sequence[0]$ is unique. It compares $sequence[0]$ against all $n-1$ other elements, taking $(n-1) \times O(K) = O(n \cdot K)$ operations.
+    
+    \item \textbf{Worst-Case Time Complexity}: $O(n^2 \cdot K)$.
+    Occurs when no unique element exists, or the unique element is located at the end. Outer loop runs $n$ times, inner loop runs up to $n$ times, yielding $n \times n \times O(K) = O(n^2 \cdot K)$.
+    
+    \item \textbf{Auxiliary Space Complexity}: $O(1)$.
+    Uses zero additional memory data structures; operates entirely within the input list.
+\end{itemize}
+
+\subsubsection{Approach 2 (Hash Map / Frequency Map)}
+\begin{itemize}
+    \item \textbf{Best, Average, \& Worst-Case Time Complexity}: $O(n \cdot K)$.
+    Pass 1 inserts $n$ names into the hash map, performing string hashing and key matching in $n \times O(K)$ time. Pass 2 iterates $n$ names with $O(K)$ hash lookups. Total Time $= 2 \cdot n \cdot O(K) = O(n \cdot K)$.
+    
+    \item \textbf{Auxiliary Space Complexity}: $O(n \cdot K)$.
+    Stores up to $n$ distinct name key strings of max length $K$ in the hash map.
+\end{itemize}
+
+\begin{table}[h]
+\centering
+\caption{Comparison Matrix for First Unique Employee Strategies}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Approach} & \textbf{Best Time} & \textbf{Average Time} & \textbf{Worst Time} & \textbf{Auxiliary Space} \\
+\midrule
+\textbf{1. List-Only Comparisons} & $O(n \cdot K)$ & $O(n^2 \cdot K)$ & $O(n^2 \cdot K)$ & $O(1)$ \\
+\textbf{2. Hash Map (Frequency Map)} & $O(n \cdot K)$ & $O(n \cdot K)$ & $O(n \cdot K)$ & $O(n \cdot K)$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Scalability and Selection Justification}
+\begin{itemize}
+    \item \textbf{Small Datasets} ($n \le 100$): Approach 1 is lightweight and requires zero memory allocations.
+    \item \textbf{Large Datasets} ($n \ge 100,000$): Approach 1 becomes impractical due to quadratic $O(n^2 \cdot K)$ growth ($\approx 10^{10}$ comparisons). Approach 2 completes in milliseconds ($\approx 2 \cdot 10^5$ operations). Approach 2 is strongly preferred for production system logs.
+\end{itemize}

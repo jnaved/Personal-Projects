@@ -1,0 +1,180 @@
+================================================================================
+          ALGORITHM DESIGN AND COMPLEXITY ANALYSIS REPORT
+================================================================================
+Problem Statement:
+An organisation maintains the names of total_employee_count employees in an 
+unsorted list. Design an algorithm to arrange the names in lexicographical order 
+and display all names that occur more than once. If no duplicate names exist, 
+report the same.
+
+--------------------------------------------------------------------------------
+PART (a): ALGORITHM IMPLEMENTATION DESIGN (WITHOUT BUILT-IN SORTING)
+--------------------------------------------------------------------------------
+To arrange employee names in lexicographical order without using built-in 
+sorting functions (such as Python's sort() or sorted()), we implement a custom 
+Merge Sort algorithm based on the Divide-and-Conquer paradigm.
+
+Algorithm Workflow:
+1. Division Phase (Divide):
+   - Recursively split the array of employee_names into two sub-lists:
+     left_sublist[0 ... middle_index - 1] and 
+     right_sublist[middle_index ... total_employee_count - 1], 
+     where middle_index = total_employee_count // 2.
+   - Base Case: A list with 0 or 1 element is already sorted.
+
+2. Sorting & Merging Phase (Conquer & Combine):
+   - Recursively sort left_sublist and right_sublist using merge_sort_names().
+   - Combine the two sorted sub-lists into a single sorted list using a custom 
+     character-by-character string comparison function (`compare_strings`).
+
+3. Duplicate Detection Phase (Linear Pass):
+   - Once sorted lexicographically, identical employee names occupy contiguous 
+     adjacent positions in sorted_employee_names.
+   - Perform a single pass (linear scan) over sorted_employee_names using two 
+     pointers: current_index and scan_index.
+   - Count contiguous equal occurrences. If occurrence_count > 1, record the 
+     target_name and its occurrence_count.
+   - If no duplicate names exist, report:
+     "No duplicate names exist in the organisation list."
+
+--------------------------------------------------------------------------------
+PART (b): CHARACTER CASE TREATMENT DURING COMPARISON
+--------------------------------------------------------------------------------
+Character comparison in this algorithm follows standard Lexicographical 
+Comparison rules based on ASCII / Unicode ordinal values.
+
+Case Comparison Definition:
+1. ASCII / Unicode Ordinal Ordering:
+   - Characters are compared strictly using their ASCII ordinal values.
+   - Uppercase letters ('A' through 'Z', ASCII values 65 to 90) have lower 
+     ordinal values than lowercase letters ('a' through 'z', ASCII values 97 to 122).
+   - Character Precedence Rule:
+       'A' (65) < 'B' (66) < ... < 'Z' (90) < 'a' (97) < 'b' (98) < ... < 'z' (122)
+
+2. Example Lexicographical Ordering:
+   - Input Names: ["John", "alice", "Bob", "John", "Alice", "Charlie", "bob", "David"]
+   - Sorted Output:
+       1. Alice
+       2. Bob
+       3. Charlie
+       4. David
+       5. John
+       6. John
+       7. alice
+       8. bob
+
+3. Duplicate Equality Definition:
+   - Two names, first_name and second_name, are defined as duplicate occurrences 
+     if and only if they are identical in both character content and character case 
+     (first_name == second_name).
+   - Under this definition:
+     - "Alice" and "alice" are treated as distinct names.
+     - The two occurrences of "John" are identified as a duplicate entry.
+
+--------------------------------------------------------------------------------
+PART (c): COMPLEXITY ANALYSIS
+--------------------------------------------------------------------------------
+Let:
+- N = total_employee_count = Number of employee names in the organisation list.
+- K = max_name_len = Maximum character length among employee names.
+
+1. Time Complexity Analysis:
+
+   Mathematical Derivation:
+   - Merge sort divides an array of N elements into halves down to single elements.
+     The height (number of levels) of the recursion tree is log2(N).
+   - At each level of the recursion tree, all N elements are merged.
+   - Comparing two string elements character-by-character takes at most K operations.
+   - Therefore, work done at each recursion level = O(N * K).
+   - Total Time = (Work per level) * (Number of levels) = O(N * K * log N).
+
+   NOTE ON NOTATION: It is strictly O(N * K * log N), NOT O(N * log(N * K)).
+   This is because the log factor comes solely from dividing N array elements, 
+   while string length K acts as a linear multiplier for each comparison.
+
+   - Best-Case Time Complexity: O(N * K * log N)
+     Merge Sort always recursively partitions down to single elements and merges 
+     sub-lists across log2(N) levels, taking O(N * K) work per level even if 
+     the input list is already sorted.
+      
+   - Average-Case Time Complexity: O(N * K * log N)
+     For arbitrary unsorted inputs, merging sub-lists performs O(N * K) work 
+     across log2(N) recursion levels.
+      
+   - Worst-Case Time Complexity: O(N * K * log N)
+     Guaranteed upper bound across all input permutations (random, reverse, identical).
+
+   - Duplicate Scan Phase: O(N * K)
+     Single-pass linear traversal over sorted_employee_names.
+
+   - Total Time Complexity:
+     T_total = T_sort + T_scan
+             = O(N * K * log N) + O(N * K)
+             = O(N * K * log N) across Best, Average, and Worst cases.
+
+2. Auxiliary Space Complexity Analysis:
+   - Call Stack Depth: O(log N) space.
+   - Temporary Merge Sub-lists: left_sublist and right_sublist require 
+     O(N * K) auxiliary space for sub-list merging.
+   - Total Auxiliary Space Complexity: O(N * K).
+
+--------------------------------------------------------------------------------
+PART (d): DUPLICATE DETECTION WITHOUT SORTING & COMPARATIVE ANALYSIS
+--------------------------------------------------------------------------------
+Can duplicate detection be performed without sorting?
+YES. Duplicate detection does NOT strictly require sorting the list first.
+
+Alternative Methods for Duplicate Detection Without Sorting:
+
+1. Hash Table / Frequency Map Approach:
+   - Mechanism: Iterate through employee_names once, incrementing frequency_map[name]. 
+     After population, collect keys where count > 1.
+   - Why String Length K Matters in Hash Tables:
+     1. Hashing a String: Unlike fixed 64-bit integers, computing the hash code of a 
+        string requires iterating through all K characters: O(K) time per string.
+     2. Key Comparison: Resolving bucket lookups and verifying key equality requires 
+        character-by-character comparison up to length K: O(K) time per string.
+     3. Total Time for N Strings: N insertions * O(K) work per insertion = O(N * K).
+   - Best, Average, & Worst-case Time Complexity: O(N * K).
+   - Auxiliary Space Complexity: O(N * K) to store string keys and counts.
+   - Limitation: Does NOT arrange names in lexicographical order.
+
+2. Pairwise Comparison (Brute Force):
+   - Mechanism: Compare outer_index from 0 to N-1 against inner_index from outer_index+1 to N-1.
+   - Best, Average, & Worst Case Time Complexity: O(N^2 * K)
+   - Auxiliary Space Complexity: O(1) auxiliary space.
+   - Limitation: Highly inefficient for large lists and does not produce sorted output.
+
+3. Trie (Prefix Tree) Data Structure:
+   - Mechanism: Insert all names into a Trie structure. End-of-word nodes store 
+     occurrence counts.
+   - Time Complexity: O(N * K) for insertion and lookup.
+   - In-order traversal yields sorted order in O(total_trie_nodes) time.
+   - Auxiliary Space Complexity: O(N * K * Alphabet_Size).
+
+--------------------------------------------------------------------------------
+COMPARATIVE SUMMARY MATRIX
+--------------------------------------------------------------------------------
++--------------------------+---------------------+-------------------+-------------------+-------------------+
+| Approach                 | Best-Case Time      | Average-Case Time | Worst-Case Time   | Auxiliary Space   |
++--------------------------+---------------------+-------------------+-------------------+-------------------+
+| 1. Custom Merge Sort +   | O(N * K * log N)    | O(N * K * log N)  | O(N * K * log N)  | O(N * K)          |
+|    Linear Scan (Proposed)|                     |                   |                   |                   |
++--------------------------+---------------------+-------------------+-------------------+-------------------+
+| 2. Hash Table            | O(N * K)            | O(N * K)          | O(N * K)          | O(N * K)          |
+|    (No Sorting)          |                     |                   |                   |                   |
++--------------------------+---------------------+-------------------+-------------------+-------------------+
+| 3. Pairwise Brute Force  | O(N^2 * K)          | O(N^2 * K)        | O(N^2 * K)        | O(1)              |
+|    (No Sorting)          |                     |                   |                   |                   |
++--------------------------+---------------------+-------------------+-------------------+-------------------+
+| 4. Trie (Prefix Tree)    | O(N * K)            | O(N * K)          | O(N * K)          | O(N * K * Sigma)  |
++--------------------------+---------------------+-------------------+-------------------+-------------------+
+* Where N = total_employee_count, K = max_name_len, Sigma = Alphabet_Size.
+
+CONCLUSION:
+- When both lexicographical sorting AND duplicate detection are required, 
+  Custom Merge Sort + Linear Scan is optimal because sorting is mandatory 
+  and duplicate scanning adds no asymptotic overhead.
+- When only duplicate detection is required without sorting, the Hash Table 
+  approach is asymptotically faster.
+================================================================================

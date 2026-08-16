@@ -1,0 +1,104 @@
+\section{Problem 2: Locally Balanced Matrix}
+
+\subsection{Problem Overview and Objectives}
+An $n \times n$ integer matrix $A$ is defined as \textbf{locally balanced} if each element $A[i][j]$ equals the sum of its valid 4-directional neighbouring elements (Up, Down, Left, Right). Only neighbours that fall strictly within matrix boundaries are considered.
+
+The objective is to:
+\begin{enumerate}
+    \item Evaluate whether the complete matrix satisfies the locally balanced condition.
+    \item If the matrix is not locally balanced, immediately report the \textbf{first violating element in row-major order}, along with its position $(i, j)$, value $A[i][j]$, and calculated neighbour sum.
+\end{enumerate}
+
+\subsection{Specifications}
+\begin{itemize}
+    \item \textbf{Input}: An $n \times n$ 2D integer matrix \texttt{matrix}.
+    \item \textbf{Output}: A 4-tuple \texttt{(is\_balanced, position, element\_value, neighbour\_sum)}:
+    \begin{itemize}
+        \item \texttt{is\_balanced}: Boolean (\texttt{True} if balanced, \texttt{False} otherwise).
+        \item \texttt{position}: Tuple $(r, c)$ of the first violation in row-major order, or \texttt{None}.
+        \item \texttt{element\_value}: Integer value at $(r, c)$, or \texttt{None}.
+        \item \texttt{neighbour\_sum}: Integer sum of valid neighbours at $(r, c)$, or \texttt{None}.
+    \end{itemize}
+    \item \textbf{Constraints}: Search order must strictly follow row-major traversal (row indices $0 \dots n-1$, column indices $0 \dots n-1$).
+\end{itemize}
+
+\subsection{Handling Corner, Boundary, and Interior Elements}
+Matrix elements are categorized based on their physical position and count of valid 4-directional neighbours:
+
+\begin{enumerate}
+    \item \textbf{Corner Elements} (4 cells per matrix):
+    \begin{itemize}
+        \item Positions: $(0, 0), (0, n-1), (n-1, 0), (n-1, n-1)$.
+        \item Valid Neighbours: Exactly 2 valid neighbours.
+        \item Condition for $A[0][0]$: $A[0][0] == A[1][0] + A[0][1]$.
+    \end{itemize}
+    
+    \item \textbf{Boundary Elements} (Perimeter cells excluding corners):
+    \begin{itemize}
+        \item Positions: First row, last row, first column, last column (excluding corners).
+        \item Valid Neighbours: Exactly 3 valid neighbours.
+        \item Condition for $A[0][j]$ ($1 \le j \le n-2$): $A[0][j] == A[0][j-1] + A[0][j+1] + A[1][j]$.
+    \end{itemize}
+    
+    \item \textbf{Interior Elements}:
+    \begin{itemize}
+        \item Positions: All cells $(i, j)$ where $1 \le i, j \le n-2$.
+        \item Valid Neighbours: Exactly 4 valid neighbours (Up, Down, Left, Right).
+        \item Condition for $A[i][j]$: $A[i][j] == A[i-1][j] + A[i+1][j] + A[i][j-1] + A[i][j+1]$.
+    \end{itemize}
+\end{enumerate}
+
+Boundary checking is unified seamlessly by testing $0 \le \text{neighbour\_row} < n$ and $0 \le \text{neighbour\_col} < n$ prior to element dereferencing.
+
+\subsection{Formal Algorithm Design}
+
+\begin{algorithm}[H]
+\caption{Locally Balanced Matrix Verification}
+\begin{algorithmic}[1]
+\Function{CheckLocallyBalancedMatrix}{$A$}
+    \State $n \gets \text{Length}(A)$
+    \If{$n == 0$} \Return $(\text{True}, \text{None}, \text{None}, \text{None})$ \EndIf
+    \State $directions \gets [(-1, 0), (1, 0), (0, -1), (0, 1)]$
+    \For{$r \gets 0$ \textbf{to} $n - 1$} \Comment{Row-major traversal}
+        \For{$c \gets 0$ \textbf{to} $n - 1$}
+            \State $neighbour\_sum \gets 0$
+            \For{\textbf{each} $(\Delta r, \Delta c)$ \textbf{in} $directions$}
+                \State $nr \gets r + \Delta r$, $nc \gets c + \Delta c$
+                \If{$0 \le nr < n$ \textbf{and} $0 \le nc < n$}
+                    \State $neighbour\_sum \gets neighbour\_sum + A[nr][nc]$
+                \EndIf
+            \EndFor
+            \State $val \gets A[r][c]$
+            \If{$val \neq neighbour\_sum$}
+                \State \Return $(\text{False}, (r, c), val, neighbour\_sum)$ \Comment{Early exit on first violation}
+            \EndIf
+        \EndFor
+    \EndFor
+    \State \Return $(\text{True}, \text{None}, \text{None}, \text{None})$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Mathematical Complexity Analysis}
+Let $n$ be the number of rows and columns in the $n \times n$ matrix. Total elements $N = n^2$.
+
+\subsubsection{Time Complexity Derivation}
+\begin{itemize}
+    \item \textbf{Best-Case Time Complexity}: $O(1)$.
+    Occurs when the very first cell $A[0][0]$ in row-major order violates the condition. Evaluating 2 valid neighbours takes constant time $\approx 2$ additions, allowing immediate return.
+    
+    \item \textbf{Average-Case Time Complexity}: $O(n^2)$.
+    On average, inspecting elements in row-major order up to a violation takes $O(n^2)$ scalar additions.
+    
+    \item \textbf{Worst-Case Time Complexity}: $O(n^2)$.
+    Occurs when the matrix is locally balanced, or when the only violating element is located at the final cell $A[n-1][n-1]$. The algorithm evaluates $n^2$ cells. For each cell, checking 4 direction offsets takes at most 4 operations ($O(1)$ work per cell):
+    \[
+    T_{\text{worst}}(n) = n^2 \times O(1) = O(n^2)
+    \]
+\end{itemize}
+
+\subsubsection{Auxiliary Space Complexity}
+\begin{itemize}
+    \item \textbf{Auxiliary Space Complexity}: $O(1)$.
+    Operates strictly in-place on the input matrix. Only scalar iteration variables (\texttt{r, c, nr, nc, neighbour\_sum}) are maintained. Zero additional grid memory is allocated.
+\end{itemize}

@@ -1,0 +1,89 @@
+================================================================================
+          PROBLEM 6 – DOMINANT ELEMENT ANALYSIS REPORT
+================================================================================
+Problem Description:
+Given an integer array of size n, determine whether there exists an element that 
+occurs more than half of the time (> n / 2).
+
+Develop two different solutions:
+1. Solution 1: Repeated Counting / Comparison (Brute Force).
+2. Solution 2: Boyer-Moore Majority Vote Algorithm (Reduces repeated work).
+
+Example Array: [2, 2, 1, 2, 3, 2, 2] (n = 7)
+Dominant Element: 2 (Occurs 5 times, 5 > 3.5)
+
+--------------------------------------------------------------------------------
+1. ALGORITHM DESIGN & PSEUDOCODE
+--------------------------------------------------------------------------------
+Solution 1: Repeated Counting / Comparison (Brute Force)
+- Set majority_threshold = n // 2.
+- For current_index from 0 to n-1:
+    - Set candidate = numbers[current_index].
+    - Set count = 0.
+    - For scan_index from 0 to n-1:
+        - If numbers[scan_index] == candidate: count += 1.
+    - If count > majority_threshold:
+        - Return True, candidate, count.
+- Return False, None, 0.
+
+Solution 2: Boyer-Moore Majority Vote Algorithm
+- Phase 1 (Find Majority Candidate):
+    - Set candidate = None, vote_counter = 0.
+    - For each num in numbers:
+        - If vote_counter == 0: candidate = num, vote_counter = 1.
+        - Else if num == candidate: vote_counter += 1.
+        - Else: vote_counter -= 1.
+- Phase 2 (Verify Candidate):
+    - Count actual occurrences of candidate in numbers: actual_count.
+    - If actual_count > n // 2:
+        - Return True, candidate, actual_count.
+- Return False, None, 0.
+
+--------------------------------------------------------------------------------
+2. COMPLEXITY ANALYSIS & COMPARISON MATRIX
+--------------------------------------------------------------------------------
+Let n = size of the integer array.
+
++--------------------------+--------------------+--------------------+--------------------+--------------------+
+| Approach                 | Best-Case Time     | Average-Case Time  | Worst-Case Time    | Auxiliary Space    |
++--------------------------+--------------------+--------------------+--------------------+--------------------+
+| 1. Repeated Counting     | O(n)               | O(n^2)             | O(n^2)             | O(1)               |
+|    (Brute Force)         |                    |                    |                    |                    |
++--------------------------+--------------------+--------------------+--------------------+--------------------+
+| 2. Boyer-Moore           | O(n)               | O(n)               | O(n)               | O(1)               |
+|    (Majority Vote)       |                    |                    |                    |                    |
++--------------------------+--------------------+--------------------+--------------------+--------------------+
+
+Detailed Breakdown:
+
+Solution 1 (Repeated Counting / Brute Force):
+- Best-Case Time: O(n). Occurs when the first element numbers[0] is the dominant 
+  element and its frequency count across the array exceeds n / 2 immediately.
+- Worst-Case Time: O(n^2). Occurs when no dominant element exists or the dominant 
+  element is at the end of the array. Outer loop runs n times, inner loop runs 
+  n times, performing n * n = n^2 comparisons.
+- Auxiliary Space: O(1). Operates entirely in-place.
+
+Solution 2 (Boyer-Moore Majority Vote Algorithm):
+- Best, Average, & Worst-Case Time: O(n).
+  Phase 1 (Candidate Search): 1 pass over array = n operations.
+  Phase 2 (Verification): 1 pass over array = n operations.
+  Total Operations = 2 * n = O(n) time across all input configurations.
+- Auxiliary Space: O(1). Uses only two scalar variables (`candidate` and `vote_counter`).
+
+--------------------------------------------------------------------------------
+3. IDENTIFYING DOMINANT ELEMENT WITHOUT ADDITIONAL STORAGE
+--------------------------------------------------------------------------------
+Question: Can the dominant element be identified without using additional storage?
+Answer: YES.
+
+Explanation:
+- The Boyer-Moore Majority Vote algorithm identifies the dominant element in linear 
+  O(n) time using strictly O(1) auxiliary space (zero extra arrays or hash tables).
+- Mechanism: It works on the pairwise cancellation principle. If we pair up different 
+  elements and eliminate them, the dominant element (which occurs > n/2 times) 
+  will guaranteed survive the elimination phase as the candidate.
+- Phase 2 then verifies if the surviving candidate indeed occurs > n/2 times in 
+  a single additional O(n) pass.
+- Thus, optimal linear time O(n) and zero additional storage O(1) are achieved simultaneously.
+================================================================================

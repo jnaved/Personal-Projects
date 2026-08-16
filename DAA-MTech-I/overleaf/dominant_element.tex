@@ -1,0 +1,126 @@
+\section{Problem 6: Dominant Element}
+
+\subsection{Problem Overview and Objectives}
+Given an integer array of size $n$, determine whether there exists a \textbf{dominant element}—an element that occurs more than half of the time ($> n / 2$).
+
+The objectives are:
+\begin{enumerate}
+    \item Develop **Solution 1**: Repeated Counting / Comparison (Brute Force).
+    \item Develop **Solution 2**: Boyer-Moore Majority Vote Algorithm (Optimal linear time and constant memory).
+    \item Provide mathematical proof explaining how the dominant element can be identified in linear time $O(n)$ \textbf{without using additional storage} ($O(1)$ space).
+\end{enumerate}
+
+\subsection{Specifications}
+\begin{itemize}
+    \item \textbf{Input}: An array of $n$ integers \texttt{numbers}.
+    \item \textbf{Output}: \texttt{(has\_dominant, candidate\_value, occurrence\_count)}.
+    \item \textbf{Constraints}: Solution 2 must allocate zero extra arrays, sets, or hash tables.
+\end{itemize}
+
+\subsection{Identifying Dominant Element Without Additional Storage}
+\begin{quote}
+\textbf{Question}: Can the dominant element be identified without using additional storage? \\
+\textbf{Answer}: \textbf{YES.}
+\end{quote}
+
+\textbf{Mathematical Proof / Pairwise Cancellation Principle}:
+\begin{enumerate}
+    \item \textbf{Pairwise Cancellation Concept}: Suppose we repeatedly pair up and eliminate two \emph{different} elements from the array. Each elimination removes at most one instance of the dominant element and one instance of a non-dominant element.
+    \item \textbf{Guaranteed Survival}: If an element $X$ appears $c > \lfloor n / 2 \rfloor$ times, the aggregate count of all other non-$X$ elements is $n - c < n/2$. Even if every non-$X$ element is paired with an instance of $X$ and eliminated, there will remain at least:
+    \[
+    c - (n - c) = 2c - n \ge 1
+    \]
+    un-eliminated instance of $X$.
+    \item \textbf{Phase 1 (Candidate Search)}: Boyer-Moore tracks a single \texttt{candidate} variable and a scalar \texttt{vote\_counter}. When \texttt{vote\_counter} drops to 0, a new candidate is selected. By the cancellation principle, the true dominant element (if it exists) is guaranteed to be the surviving candidate at the end of Phase 1.
+    \item \textbf{Phase 2 (Verification Pass)}: A second linear $O(n)$ pass counts exact occurrences of \texttt{candidate} to confirm if count $> \lfloor n / 2 \rfloor$.
+\end{enumerate}
+
+\subsection{Formal Algorithm Design}
+
+\begin{algorithm}[H]
+\caption{Solution 1: Brute Force Repeated Counting ($O(n^2)$ Time)}
+\begin{algorithmic}[1]
+\Function{FindDominantRepeatedCounting}{$numbers$}
+    \State $n \gets \text{Length}(numbers)$
+    \If{$n == 0$} \Return $(\text{False}, \text{None}, 0)$ \EndIf
+    \State $threshold \gets \lfloor n / 2 \rfloor$
+    \For{$i \gets 0$ \textbf{to} $n - 1$}
+        \State $candidate \gets numbers[i]$, $count \gets 0$
+        \For{$j \gets 0$ \textbf{to} $n - 1$}
+            \If{$numbers[j] == candidate$}
+                \State $count \gets count + 1$
+            \EndIf
+        \EndFor
+        \If{$count > threshold$}
+            \State \Return $(\text{True}, candidate, count)$
+        \EndIf
+    \EndFor
+    \State \Return $(\text{False}, \text{None}, 0)$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Solution 2: Boyer-Moore Majority Vote Algorithm ($O(n)$ Time, $O(1)$ Space)}
+\begin{algorithmic}[1]
+\Function{FindDominantBoyerMoore}{$numbers$}
+    \State $n \gets \text{Length}(numbers)$
+    \If{$n == 0$} \Return $(\text{False}, \text{None}, 0)$ \EndIf
+    \State $candidate \gets \text{None}$, $votes \gets 0$ \Comment{Phase 1: Candidate Search}
+    \For{\textbf{each} $num$ \textbf{in} $numbers$}
+        \If{$votes == 0$}
+            \State $candidate \gets num$, $votes \gets 1$
+        \ElsIf{$num == candidate$}
+            \State $votes \gets votes + 1$
+        \Else
+            \State $votes \gets votes - 1$
+        \EndIf
+    \EndFor
+    \State $actual\_count \gets 0$ \Comment{Phase 2: Candidate Verification}
+    \For{\textbf{each} $num$ \textbf{in} $numbers$}
+        \If{$num == candidate$}
+            \State $actual\_count \gets actual\_count + 1$
+        \EndIf
+    \EndFor
+    \If{$actual\_count > \lfloor n / 2 \rfloor$}
+        \State \Return $(\text{True}, candidate, actual\_count)$
+    \Else
+        \State \Return $(\text{False}, \text{None}, 0)$
+    \EndIf
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Complexity Analysis and Comparison}
+
+\subsubsection{Solution 1 (Brute Force Repeated Counting)}
+\begin{itemize}
+    \item \textbf{Best-Case Time Complexity}: $O(n)$.
+    Occurs when the first element $numbers[0]$ is dominant and its frequency scan immediately exceeds $n/2$.
+    \item \textbf{Worst-Case Time Complexity}: $O(n^2)$.
+    Occurs when no dominant element exists or the dominant element is at the end. Outer loop runs $n$ times, inner loop runs $n$ times $\Rightarrow n \times n = n^2$ comparisons.
+    \item \textbf{Auxiliary Space Complexity}: $O(1)$.
+\end{itemize}
+
+\subsubsection{Solution 2 (Boyer-Moore Majority Vote Algorithm)}
+\begin{itemize}
+    \item \textbf{Best, Average, \& Worst-Case Time Complexity}: $O(n)$.
+    Phase 1 performs 1 pass over array ($n$ steps). Phase 2 performs 1 pass over array ($n$ steps). Total operations $= 2n = O(n)$ across all input distributions.
+    \item \textbf{Auxiliary Space Complexity}: $O(1)$.
+    Uses only two scalar variables (\texttt{candidate} and \texttt{votes}).
+\end{itemize}
+
+\begin{table}[h]
+\centering
+\caption{Comparison Matrix for Dominant Element Strategies}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Approach} & \textbf{Best Time} & \textbf{Average Time} & \textbf{Worst Time} & \textbf{Auxiliary Space} \\
+\midrule
+\textbf{1. Repeated Counting (Brute Force)} & $O(n)$ & $O(n^2)$ & $O(n^2)$ & $O(1)$ \\
+\textbf{2. Boyer-Moore Majority Vote} & $O(n)$ & $O(n)$ & $O(n)$ & $O(1)$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Conclusion}: Solution 2 (Boyer-Moore) is strictly superior as it achieves optimal linear $O(n)$ time while strictly satisfying the zero additional storage constraint ($O(1)$ auxiliary space).

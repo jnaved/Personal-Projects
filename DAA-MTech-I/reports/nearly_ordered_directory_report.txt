@@ -1,0 +1,89 @@
+================================================================================
+     PROBLEM 5 – NEARLY ORDERED EMPLOYEE DIRECTORY ANALYSIS REPORT
+================================================================================
+Problem Description:
+An employee directory containing n names is expected to be in lexicographical 
+order, but due to a data-entry error, some names may have been placed incorrectly.
+
+Given the list:
+1. Determine whether it is already sorted.
+2. Identify all positions where the ordering is violated (names[i] > names[i+1]).
+3. Determine whether exchanging ONLY TWO names can make the complete list sorted.
+   If possible, report the two positions.
+
+Constraint: Do NOT sort the complete array merely to determine ordering.
+
+--------------------------------------------------------------------------------
+1. ALGORITHM DESIGN & PSEUDOCODE
+--------------------------------------------------------------------------------
+Phase 1: Inversion Scanning
+- Iterate i from 0 to n-2:
+    - Compare names[i] and names[i+1] lexicographically.
+    - If names[i] > names[i+1], record index i into violation_indices list.
+- If violation_indices is empty:
+    - Report Directory is Already Sorted.
+
+Phase 2: Single Swap Candidate Identification
+- Case A: len(violation_indices) == 1
+  - The violation is caused by adjacent elements being swapped.
+  - Candidate swap positions: pos_1 = violation_indices[0], pos_2 = violation_indices[0] + 1.
+
+- Case B: len(violation_indices) == 2
+  - The violation is caused by non-adjacent elements being swapped.
+  - Candidate swap positions: pos_1 = violation_indices[0], pos_2 = violation_indices[1] + 1.
+
+- Case C: len(violation_indices) > 2
+  - More than 2 inversions exist; a single swap CANNOT restore sorted order.
+
+Phase 3: Swap Simulation & Verification
+- Swap candidate names at pos_1 and pos_2.
+- Perform a single linear pass to verify if the swapped array is sorted.
+- If sorted, report pos_1 and pos_2 as the single swap solution.
+- Otherwise, report that a single swap cannot restore ordering.
+
+--------------------------------------------------------------------------------
+2. CONDITIONS UNDER WHICH A SINGLE SWAP RESTORES ORDERING
+--------------------------------------------------------------------------------
+A single swap of elements at indices pos_1 and pos_2 (where pos_1 < pos_2) 
+can restore sorted order IF AND ONLY IF the following conditions hold:
+
+1. Inversion Count Condition:
+   The original array contains at most 2 inversion points (i where names[i] > names[i+1]).
+
+2. Adjacent Swap Condition (1 Inversion):
+   If exactly 1 inversion occurs at index i, then swapping names[i] and names[i+1] 
+   must satisfy:
+   - names[i+1] >= names[i-1] (if i > 0)
+   - names[i] <= names[i+2] (if i+1 < n-1)
+
+3. Non-Adjacent Swap Condition (2 Inversions):
+   If 2 inversions occur at indices i and j (where i < j), then swapping names[i] 
+   and names[j+1] must satisfy:
+   - names[j+1] >= names[i-1] and names[j+1] <= names[i+1]
+   - names[i] >= names[j] and names[i] <= names[j+2]
+
+--------------------------------------------------------------------------------
+3. TIME AND AUXILIARY SPACE COMPLEXITY ANALYSIS
+--------------------------------------------------------------------------------
+Let n = total number of employee names.
+Let k = maximum character length of an employee name string.
+
+Time Complexity:
+- Best-Case Time Complexity: O(n * k)
+  Occurs when the array is already sorted. Scanning n-1 pairs takes (n-1) * O(k) time.
+
+- Worst-Case Time Complexity: O(n * k)
+  Phase 1 (Scanning inversions): (n-1) * O(k) time.
+  Phase 2 (Candidate identification): O(1) time.
+  Phase 3 (Verification pass): (n-1) * O(k) time.
+  Total Time = 2 * n * O(k) = O(n * k).
+
+Avoidance of Full Sort:
+By utilizing inversion point properties, we solve the problem in linear O(n * k) 
+time, avoiding full array sorting which requires O(n log n * k) time.
+
+Auxiliary Space Complexity:
+- Auxiliary Space Complexity: O(1)
+  Only scalar variables (indices pos_1, pos_2, inversion counters) are used. 
+  Zero extra memory is required.
+================================================================================
