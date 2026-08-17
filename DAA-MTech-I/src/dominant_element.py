@@ -1,6 +1,6 @@
 """
 ================================================================================
-Problem 6 – Dominant Element
+Problem 6 Dominant Element
 ================================================================================
 Problem Description:
 Given an integer array of size n, determine whether there exists an element that 

@@ -1,6 +1,6 @@
 """
 ================================================================================
-Problem 4 – Stable Matrix
+Problem 4 Stable Matrix
 ================================================================================
 Problem Description:
 An n x n integer matrix is called stable if every non-boundary (interior) element 

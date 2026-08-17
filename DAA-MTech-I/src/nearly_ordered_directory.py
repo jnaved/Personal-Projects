@@ -1,6 +1,6 @@
 """
 ================================================================================
-Problem 5 – Nearly Ordered Employee Directory
+Problem 5 Nearly Ordered Employee Directory
 ================================================================================
 Problem Description:
 An employee directory containing n names is expected to be in lexicographical 

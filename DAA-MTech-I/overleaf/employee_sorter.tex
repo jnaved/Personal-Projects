@@ -125,10 +125,12 @@ Let $N$ be the total number of employee names and $K$ be the maximum length of a
 \subsection{Duplicate Detection Without Sorting \& Comparative Matrix}
 Duplicate detection does not strictly require sorting. Alternative data structures yield different space-time tradeoffs:
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering
+\small
 \caption{Comparative Performance Matrix for Problem 1 Strategies}
-\begin{tabular}{lcccc}
+\label{tab:problem1_complexity}
+\begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}X c c c c @{}}
 \toprule
 \textbf{Approach} & \textbf{Best Time} & \textbf{Average Time} & \textbf{Worst Time} & \textbf{Auxiliary Space} \\
 \midrule
@@ -137,7 +139,7 @@ Duplicate detection does not strictly require sorting. Alternative data structur
 \textbf{Brute Force Pairwise} & $O(N^2 K)$ & $O(N^2 K)$ & $O(N^2 K)$ & $O(1)$ \\
 \textbf{Trie (Prefix Tree)} & $O(N K)$ & $O(N K)$ & $O(N K)$ & $O(N K \cdot \Sigma)$ \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \textbf{Conclusion}: When both lexicographical ordering and duplicate detection are required, Merge Sort + Linear Scan is optimal because sorting is mandatory and scanning adds zero asymptotic overhead. If only duplicate detection is required, the Hash Table approach is asymptotically faster ($O(N K)$).

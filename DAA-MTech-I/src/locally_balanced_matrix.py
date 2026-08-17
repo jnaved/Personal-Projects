@@ -1,6 +1,6 @@
 """
 ================================================================================
-Problem 2 – Locally Balanced Matrix
+Problem 2 Locally Balanced Matrix
 ================================================================================
 Problem Description:
 An n x n integer matrix is locally balanced if each element A[i][j] equals the sum 

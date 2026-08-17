@@ -5,8 +5,8 @@ A company records the access log sequence of $n$ employee names. An employee is 
 
 The objectives are:
 \begin{enumerate}
-    \item Design **Approach 1**: Find the first unique employee name using \textbf{ONLY} the given list and repeated comparisons, using zero additional data structures ($O(1)$ auxiliary space).
-    \item Design **Approach 2**: Find the first unique employee name using an additional data structure (\textbf{Hash Map / Frequency Map}) to optimize time complexity.
+    \item Design \textbf{Approach 1}: Find the first unique employee name using \textbf{ONLY} the given list and repeated comparisons, using zero additional data structures ($O(1)$ auxiliary space).
+    \item Design \textbf{Approach 2}: Find the first unique employee name using an additional data structure (\textbf{Hash Map / Frequency Map}) to optimize time complexity.
     \item Compare both solutions across time, space, and scalability for small vs. massive datasets.
 \end{enumerate}
 
@@ -83,17 +83,19 @@ The objectives are:
     Stores up to $n$ distinct name key strings of max length $K$ in the hash map.
 \end{itemize}
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering
+\small
 \caption{Comparison Matrix for First Unique Employee Strategies}
-\begin{tabular}{lcccc}
+\label{tab:problem3_complexity}
+\begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}X c c c c @{}}
 \toprule
 \textbf{Approach} & \textbf{Best Time} & \textbf{Average Time} & \textbf{Worst Time} & \textbf{Auxiliary Space} \\
 \midrule
 \textbf{1. List-Only Comparisons} & $O(n \cdot K)$ & $O(n^2 \cdot K)$ & $O(n^2 \cdot K)$ & $O(1)$ \\
 \textbf{2. Hash Map (Frequency Map)} & $O(n \cdot K)$ & $O(n \cdot K)$ & $O(n \cdot K)$ & $O(n \cdot K)$ \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \subsection{Scalability and Selection Justification}

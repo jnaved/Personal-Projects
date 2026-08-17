@@ -5,8 +5,8 @@ Given an integer array of size $n$, determine whether there exists a \textbf{dom
 
 The objectives are:
 \begin{enumerate}
-    \item Develop **Solution 1**: Repeated Counting / Comparison (Brute Force).
-    \item Develop **Solution 2**: Boyer-Moore Majority Vote Algorithm (Optimal linear time and constant memory).
+    \item Develop \textbf{Solution 1}: Repeated Counting / Comparison (Brute Force).
+    \item Develop \textbf{Solution 2}: Boyer-Moore Majority Vote Algorithm (Optimal linear time and constant memory).
     \item Provide mathematical proof explaining how the dominant element can be identified in linear time $O(n)$ \textbf{without using additional storage} ($O(1)$ space).
 \end{enumerate}
 
@@ -110,17 +110,19 @@ The objectives are:
     Uses only two scalar variables (\texttt{candidate} and \texttt{votes}).
 \end{itemize}
 
-\begin{table}[h]
+\begin{table}[htbp]
 \centering
+\small
 \caption{Comparison Matrix for Dominant Element Strategies}
-\begin{tabular}{lcccc}
+\label{tab:problem6_complexity}
+\begin{tabularx}{\textwidth}{@{} >{\raggedright\arraybackslash}X c c c c @{}}
 \toprule
 \textbf{Approach} & \textbf{Best Time} & \textbf{Average Time} & \textbf{Worst Time} & \textbf{Auxiliary Space} \\
 \midrule
 \textbf{1. Repeated Counting (Brute Force)} & $O(n)$ & $O(n^2)$ & $O(n^2)$ & $O(1)$ \\
 \textbf{2. Boyer-Moore Majority Vote} & $O(n)$ & $O(n)$ & $O(n)$ & $O(1)$ \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \textbf{Conclusion}: Solution 2 (Boyer-Moore) is strictly superior as it achieves optimal linear $O(n)$ time while strictly satisfying the zero additional storage constraint ($O(1)$ auxiliary space).
