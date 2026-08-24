@@ -1,0 +1,950 @@
+\documentclass[12pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{newtxtext,newtxmath} % Times-style font
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{float}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+
+% Keep entire document at 12 pt
+\AtBeginDocument{
+    \fontsize{12pt}{14pt}\selectfont
+}
+
+% ------------------------------------------------
+% Header
+% ------------------------------------------------
+
+\pagestyle{fancy}
+\fancyhf{}
+
+\fancyhead[L]{Name: \underline{Shaik Jnaved}}
+\fancyhead[R]{Enrollment No.: \underline{P26DS001}}
+
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{15pt}
+
+% ------------------------------------------------
+% Code formatting
+% ------------------------------------------------
+
+\lstset{
+    basicstyle=\ttfamily\fontsize{10pt}{12pt}\selectfont,
+    breaklines=true,
+    frame=single,
+    columns=fullflexible,
+    keepspaces=true,
+    showstringspaces=false
+}
+
+\begin{document}
+
+% ==============================================================================
+% PROBLEM 1: SEARCHING ALGORITHMS
+% ==============================================================================
+
+\begin{center}
+\textbf{Computer Science and Engineering Department, SVNIT, Surat}\\
+\textbf{M.Tech. I -- Semester I}\\
+\textbf{Design and Analysis of Algorithm (CSDS103)}\\
+\textbf{Lab Assignment 2 -- Problem 1}
+\end{center}
+
+\vspace{0.4cm}
+
+\textbf{Problem Statement}
+
+\textbf{Title: Linear Search and Binary Search Analysis}
+
+Implement Linear Search and Binary Search algorithms for varying array sizes ($n = 10, 50, 100, 200$). Benchmark and measure execution times across four distinct target search cases (beginning, middle, end, and not present), generate plots of input size versus execution time, and compare experimental results with theoretical time complexities.
+
+\vspace{0.3cm}
+
+\textbf{Code:}
+
+\begin{lstlisting}[language=Python]
+'''
+Implement linear search and binary search for array sizes of 10, 50, 100, 200
+generate plots of input-size vs execution_time and compare with theoretical times
+'''
+
+import sys
+import time
+import random
+from pathlib import Path
+import matplotlib.pyplot as plt
+
+CURRENT_DIR = Path(__file__).resolve().parent
+DEFAULT_FILE_PATH = CURRENT_DIR / "sample_input_1.txt"
+DEFAULT_SIZES = [10, 50, 100, 200]
+
+
+def generate_sample_input_file(filepath: str | Path = DEFAULT_FILE_PATH, target: int = 42, sizes: list[int] = DEFAULT_SIZES) -> str:
+    """
+    Generates a sample input file in the requested format:
+    - First element: target value
+    - Size 1 (e.g. 10)
+    - 10 elements
+    - Size 2 (e.g. 50)
+    - 50 elements
+    - Size 3 (e.g. 100)
+    - 100 elements
+    - Size 4 (e.g. 200)
+    - 200 elements
+    """
+    filepath = Path(filepath)
+    if not filepath.is_absolute():
+        filepath = CURRENT_DIR / filepath
+
+    lines = []
+    # 1. First element is target value
+    lines.append(f"# Target Value\n{target}")
+
+    # 2. For each size, write size followed by space-separated elements
+    for sz in sizes:
+        # Generate sorted unique random numbers
+        elements = sorted(random.sample(range(1, max(1000, sz * 20)), sz))
+        lines.append(f"# Size: {sz}\n{sz}")
+        lines.append(" ".join(map(str, elements)))
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+
+    print(f"Sample input file generated at: {filepath}")
+    return str(filepath)
+
+
+def read_input_from_file(filepath: str | Path = DEFAULT_FILE_PATH) -> tuple[int, dict[int, list[int]]]:
+    """
+    Reads the target value and the multi-sized datasets from the input file.
+    Returns:
+        (target_value, {size: [elements, ...], ...})
+    """
+    filepath = Path(filepath)
+    if not filepath.is_absolute():
+        filepath = CURRENT_DIR / filepath
+
+    if not filepath.exists():
+        generate_sample_input_file(filepath)
+
+    with open(filepath, "r", encoding="utf-8") as f:
+        raw_lines = [line.strip() for line in f if line.strip() and not line.strip().startswith("#")]
+
+    if not raw_lines:
+        raise ValueError(f"Input file {filepath} is empty or corrupted.")
+
+    tokens: list[int] = []
+    for line in raw_lines:
+        tokens.extend([int(x) for x in line.replace(",", " ").split() if x.strip()])
+
+    if not tokens:
+        raise ValueError("No numeric data found in input file.")
+
+    target_val = tokens[0]
+    idx = 1
+    datasets: dict[int, list[int]] = {}
+
+    while idx < len(tokens):
+        sz = tokens[idx]
+        idx += 1
+        arr = tokens[idx: idx + sz]
+        datasets[sz] = arr
+        idx += sz
+
+    return target_val, datasets
+
+
+def linear_search(target: int, array: list[int]) -> int:
+    for idx, ele in enumerate(array):
+        if ele == target:
+            return idx
+    return -1
+
+
+def binary_search(target: int, array: list[int]) -> int:
+    low = 0
+    high = len(array) - 1
+
+    while low <= high:
+        mid = low + (high - low) // 2
+
+        if array[mid] == target:
+            return mid
+        elif array[mid] < target:
+            low = mid + 1
+        else:
+            high = mid - 1
+
+    return -1
+
+
+def implement_search(type: str, target: int, array: list[int]) -> int:
+    if type == "linear":
+        return linear_search(target=target, array=array)
+    elif type == "binary":
+        return binary_search(target=target, array=array)
+    return -1
+
+
+def get_target_for_case(case: str, array: list[int]) -> int:
+    """
+    Returns the target value for each of the 4 test cases:
+    - 'beginning': First element (Best case for linear search)
+    - 'middle': Middle element (Best case for binary search)
+    - 'end': Last element (Worst case for linear search)
+    - 'not_present': Element not in array (Worst case for both)
+    """
+    if case == "beginning":
+        return array[0]
+    elif case == "middle":
+        l = len(array)
+        return array[l // 2] if l&1 else array[(l-1)//2]
+    elif case == "end":
+        return array[-1]
+    elif case == "not_present":
+        return max(array) + 1000
+    else:
+        raise ValueError(f"Unknown case: {case}")
+
+
+def measure_search_time(search_type: str, target: int, array: list[int], iterations: int = 10000) -> float:
+    """
+    Measures the average execution time in microseconds (µs) over multiple iterations.
+    """
+    search_fn = linear_search if search_type == "linear" else binary_search
+    
+    start = time.perf_counter()
+    for _ in range(iterations):
+        search_fn(target, array)
+    total_time = time.perf_counter() - start
+
+    # Return average execution time in microseconds (µs)
+    return (total_time / iterations) * 1e6
+
+
+def plot_and_compare_TC(type: str, datasets: dict[int, list[int]] | None = None):
+    """
+    Plots input-size vs execution time for 4 target cases:
+    beginning, middle, end, not_present.
+    """
+    if datasets is None:
+        _, datasets = read_input_from_file()
+
+    sizes = sorted(datasets.keys())
+    cases = ["beginning", "middle", "end", "not_present"]
+    case_styles = {
+        "beginning": {"color": "#2ca02c", "marker": "o", "label": "Beginning"},
+        "middle": {"color": "#1f77b4", "marker": "s", "label": "Middle"},
+        "end": {"color": "#ff7f0e", "marker": "^", "label": "End"},
+        "not_present": {"color": "#d62728", "marker": "x", "label": "Not Present (Worst)"}
+    }
+
+    results: dict[str, list[float]] = {case: [] for case in cases}
+
+    print(f"\n--- Benchmark Results for {type.capitalize()} Search (in µs) ---")
+    print(f"{'Size (n)':<10} | " + " | ".join(f"{c:<14}" for c in cases))
+    print("-" * 75)
+
+    for sz in sizes:
+        arr = datasets[sz]
+        row_str = f"{sz:<10} | "
+        for case in cases:
+            target = get_target_for_case(case, arr)
+            avg_time_us = measure_search_time(type, target, arr)
+            results[case].append(avg_time_us)
+            row_str += f"{avg_time_us:<14.4f} | "
+        print(row_str)
+
+    # Plotting
+    plt.figure(figsize=(9, 6))
+    for case in cases:
+        plt.plot(
+            sizes,
+            results[case],
+            marker=case_styles[case]["marker"],
+            color=case_styles[case]["color"],
+            linewidth=2,
+            markersize=7,
+            label=case_styles[case]["label"]
+        )
+
+    algo_title = "Linear Search" if type == "linear" else "Binary Search"
+    plt.title(f"{algo_title}: Input Size vs Execution Time Across 4 Cases", fontsize=13, fontweight="bold")
+    plt.xlabel("Input Size (n)", fontsize=11)
+    plt.ylabel("Execution Time (µs)", fontsize=11)
+    plt.xticks(sizes)
+    plt.grid(True, linestyle="--", alpha=0.6)
+    plt.legend(loc="upper left", fontsize=10)
+    plt.tight_layout()
+
+    # Save figure to images folder if available, else current directory
+    images_dir = CURRENT_DIR.parent.parent / "images"
+    save_path = images_dir / f"{type}_search_tc_analysis.png" if images_dir.exists() else CURRENT_DIR / f"{type}_search_tc_analysis.png"
+    plt.savefig(save_path, dpi=300)
+    print(f"[Plot Saved] Saved figure to: {save_path}")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1 and any(arg.lower().lstrip("-") == "new" for arg in sys.argv[1:]):
+        generate_sample_input_file()
+    
+    target, datasets = read_input_from_file()
+    
+    # Run searches on sample dataset
+    sample_array = datasets[DEFAULT_SIZES[0]]
+    print(f"Dataset sizes available: {list(datasets.keys())}")
+    print(f"Target value from file: {target}")
+    print(f"Linear search result on size {len(sample_array)}: index = {implement_search('linear', target, sample_array)}")
+    print(f"Binary search result on size {len(sample_array)}: index = {implement_search('binary', target, sample_array)}")
+
+    # Plot and compare for both linear and binary search
+    plot_and_compare_TC(type="linear", datasets=datasets)
+    plot_and_compare_TC(type="binary", datasets=datasets)
+\end{lstlisting}
+
+\newpage
+
+\textbf{Output:}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.49\textwidth]{images/linear_search_tc_analysis.png}
+\hfill
+\includegraphics[width=0.49\textwidth]{images/binary_search_tc_analysis.png}
+\caption{Benchmark Execution Time Plots for Linear Search and Binary Search ($n = 10, 50, 100, 200$)}
+\end{figure}
+
+\newpage
+
+\textbf{Analysis:}
+
+\textbf{1. Theoretical Complexity Breakdown:}
+\begin{itemize}
+    \item \textbf{Linear Search:}
+    \begin{itemize}
+        \item \textbf{Best Case ($O(1)$):} The target element resides at the first position ($A[0]$), matching in a single comparison.
+        \item \textbf{Average Case ($O(n)$):} For randomly distributed target values, approximately $n / 2$ element comparisons are performed.
+        \item \textbf{Worst Case ($O(n)$):} When the target is at the last index ($A[n-1]$) or not present in the array, all $n$ elements are scanned.
+        \item \textbf{Auxiliary Space:} $\mathbf{O(1)}$.
+    \end{itemize}
+    \item \textbf{Binary Search:}
+    \begin{itemize}
+        \item \textbf{Best Case ($O(1)$):} Target matches the initial midpoint ($A[\lfloor (low+high)/2 \rfloor]$) in the first iteration.
+        \item \textbf{Average \& Worst Case ($O(\log_2 n)$):} Halves search space repeatedly until $low > high$.
+        \item \textbf{Prerequisite \& Space:} Requires a sorted array; iterative implementation requires $\mathbf{O(1)}$ auxiliary space.
+    \end{itemize}
+\end{itemize}
+
+\textbf{2. Experimental vs. Theoretical Comparison:}
+As seen in the generated benchmark graphs across input sizes $n \in \{10, 50, 100, 200\}$:
+\begin{itemize}
+    \item \textbf{Linear Search Curve:} Scales with steep linear slope for the \textit{End} and \textit{Not Present} cases ($O(n)$), while \textit{Beginning} remains flat ($O(1)$).
+    \item \textbf{Binary Search Curve:} Execution time across all four cases remains compressed within sub-microsecond bounds, demonstrating logarithmic flat scaling $O(\log n)$.
+\end{itemize}
+
+\newpage
+
+% ==============================================================================
+% PROBLEM 2: SORTING ALGORITHMS
+% ==============================================================================
+
+\begin{center}
+\textbf{Computer Science and Engineering Department, SVNIT, Surat}\\
+\textbf{M.Tech. I -- Semester I}\\
+\textbf{Design and Analysis of Algorithm (CSDS103)}\\
+\textbf{Lab Assignment 2 -- Problem 2}
+\end{center}
+
+\vspace{0.4cm}
+
+\textbf{Problem Statement}
+
+\textbf{Title: Bubble, Selection, and Insertion Sort Analysis}
+
+Implement Bubble Sort, Selection Sort, and Insertion Sort algorithms for varying array sizes ($n = 10, 50, 100, 200$). Benchmark and compare their execution times on random, already sorted, and reverse-sorted datasets, generate plots of input size versus execution time, and analyze their performance.
+
+\vspace{0.3cm}
+
+\textbf{Code:}
+
+\begin{lstlisting}[language=Python]
+import random
+import sys
+import time
+import matplotlib.pyplot as plt
+from pathlib import Path
+
+
+CURRENT_DIR = Path(__file__).resolve().parent
+DEFAULT_FILE_PATH = CURRENT_DIR / "sample_input_2.txt"
+DEFAULT_SIZES = [10, 50, 100, 200]
+
+
+def generate_sample_input_file(filepath: str | Path = DEFAULT_FILE_PATH, sizes: list[int] = DEFAULT_SIZES) -> str:
+    """
+    Generates a sample input file in the requested format:
+    - Size 1 (e.g. 10)
+    - 10 elements
+    - Size 2 (e.g. 50)
+    - 50 elements
+    - Size 3 (e.g. 100)
+    - 100 elements
+    - Size 4 (e.g. 200)
+    - 200 elements
+    """
+    filepath = Path(filepath)
+    if not filepath.is_absolute():
+        filepath = CURRENT_DIR / filepath
+
+    lines = []
+
+    # 2. For each size, write size followed by space-separated elements
+    for sz in sizes:
+        # Generate unique random numbers
+        elements = random.sample(range(1, max(1000, sz * 20)), sz)
+        lines.append(f"# Size: {sz}\n{sz}")
+        lines.append(" ".join(map(str, elements)))
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+
+    print(f"Sample input file generated at: {filepath}")
+    return str(filepath)
+
+
+def read_input_from_file(filepath: str | Path = DEFAULT_FILE_PATH) -> dict[int, list[int]]:
+    """
+    Reads the target value and the multi-sized datasets from the input file.
+    Returns:
+        (target_value, {size: [elements, ...], ...})
+    """
+    filepath = Path(filepath)
+    if not filepath.is_absolute():
+        filepath = CURRENT_DIR / filepath
+
+    if not filepath.exists():
+        generate_sample_input_file(filepath)
+
+    with open(filepath, "r", encoding="utf-8") as f:
+        raw_lines = [line.strip() for line in f if line.strip() and not line.strip().startswith("#")]
+
+    if not raw_lines:
+        raise ValueError(f"Input file {filepath} is empty or corrupted.")
+
+    tokens: list[int] = []
+    for line in raw_lines:
+        tokens.extend([int(x) for x in line.replace(",", " ").split() if x.strip()])
+
+    if not tokens:
+        raise ValueError("No numeric data found in input file.")
+    
+    idx = 0
+    datasets: dict[int, list[int]] = {}
+
+    while idx < len(tokens):
+        sz = tokens[idx]
+        idx += 1
+        arr = tokens[idx: idx + sz]
+        datasets[sz] = arr
+        idx += sz
+
+    return datasets
+
+
+def bubble_sort(array: list[int]) -> list[int]:
+    """
+        Implements bubble sort
+    """
+    n = len(array)
+    for i in range(n):
+        for j in range(0, n-i-1):
+            if array[j] > array[j+1]:
+                array[j], array[j+1] = array[j+1], array[j]
+
+
+def selection_sort(array: list[int]):
+    """
+        Implements selection sort
+    """
+    n = len(array)
+    for i in range(n-1):
+        min_idx = i
+        for j in range(i+1, n):
+            if array[j] < array[min_idx]:
+                min_idx = j
+        
+        array[i], array[min_idx] = array[min_idx], array[i]
+
+
+def insertion_sort(array: list[int]):
+    """
+        Implements insertion sort
+    """
+    for i in range(1, len(array)):
+        key = array[i]
+        j = i-1
+        while(j>=0 and key < array[j]):
+            array[j+1] = array[j]
+            j-=1
+        array[j+1] = key
+
+
+def get_target_for_case(case: str, array: list[int]) -> list[int]:
+    """
+    Returns the target value for each of the 4 test cases:
+    - 'random': Returns the array
+    - 'sorted': Return sorted array
+    - 'rsorted': Return reverse sorted array
+    """
+    if case == "random":
+        return array
+    elif case == "sorted":
+        return sorted(array)
+    elif case == "rsorted":
+        return sorted(array, reverse=True)
+    else:
+        raise ValueError(f"Unknown case: {case}")
+
+
+def measure_sort_time(sort_type: str, array: list[int], iterations: int = 10000) -> float:
+    """
+    Measures the average execution time in microseconds (µs) over multiple iterations.
+    """
+    sort_fn_map = {
+        "bubble": bubble_sort,
+        "selection": selection_sort,
+        "insertion": insertion_sort
+    }
+    sort_fn = sort_fn_map[sort_type]
+    
+    start = time.perf_counter()
+    for _ in range(iterations):
+        sort_fn(array.copy())
+    total_time = time.perf_counter() - start
+
+    # Return average execution time in microseconds (µs)
+    return (total_time / iterations) * 1e6
+
+
+def plot_and_compare_TC(type: str, datasets: dict[int, list[int]] | None = None):
+    """
+    Plots input-size vs execution time for 4 target cases:
+    beginning, middle, end, not_present.
+    """
+    if datasets is None:
+        datasets = read_input_from_file()
+
+    sizes = sorted(datasets.keys())
+    cases = ["random", "sorted", "rsorted"]
+    case_styles = {
+        "random": {"color": "#2ca02c", "marker": "o", "label": "Random"},
+        "sorted": {"color": "#1f77b4", "marker": "s", "label": "Sorted"},
+        "rsorted": {"color": "#ff7f0e", "marker": "^", "label": "Reversed Sorted"}
+    }
+
+    results: dict[str, list[float]] = {case: [] for case in cases}
+
+    print(f"\n--- Benchmark Results for {type.capitalize()} Sort (in µs) ---")
+    print(f"{'Size (n)':<10} | " + " | ".join(f"{c:<14}" for c in cases))
+    print("-" * 75)
+
+    for sz in sizes:
+        arr = datasets[sz]
+        row_str = f"{sz:<10} | "
+        for case in cases:
+            case_arr = get_target_for_case(case, arr)
+            avg_time_us = measure_sort_time(type, case_arr)
+            results[case].append(avg_time_us)
+            row_str += f"{avg_time_us:<14.4f} | "
+        print(row_str)
+
+    # Plotting
+    plt.figure(figsize=(9, 6))
+    for case in cases:
+        plt.plot(
+            sizes,
+            results[case],
+            marker=case_styles[case]["marker"],
+            color=case_styles[case]["color"],
+            linewidth=2,
+            markersize=7,
+            label=case_styles[case]["label"]
+        )
+
+    algo_title_map = {
+        "bubble": "Bubble Sort",
+        "selection": "Selection Sort",
+        "insertion": "Insertion Sort"
+    }
+    algo_title = algo_title_map[type]
+    plt.title(f"{algo_title}: Input Size vs Execution Time", fontsize=13, fontweight="bold")
+    plt.xlabel("Input Size (n)", fontsize=11)
+    plt.ylabel("Execution Time (µs)", fontsize=11)
+    plt.xticks(sizes)
+    plt.grid(True, linestyle="--", alpha=0.6)
+    plt.legend(loc="upper left", fontsize=10)
+    plt.tight_layout()
+
+    # Save figure to images folder if available, else current directory
+    images_dir = CURRENT_DIR.parent.parent / "images"
+    save_path = images_dir / f"{type}_sort_tc_analysis.png" if images_dir.exists() else CURRENT_DIR / f"{type}_sort_tc_analysis.png"
+    plt.savefig(save_path, dpi=300)
+    print(f"[Plot Saved] Saved figure to: {save_path}")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1 and any(arg.lower().lstrip("-") == "new" for arg in sys.argv[1:]):
+        generate_sample_input_file()
+    
+    for type in ("bubble", "selection", "insertion"):
+        plot_and_compare_TC(type=type)
+\end{lstlisting}
+
+\newpage
+
+\textbf{Output:}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.32\textwidth]{images/bubble_sort_tc_analysis.png}
+\hfill
+\includegraphics[width=0.32\textwidth]{images/selection_sort_tc_analysis.png}
+\hfill
+\includegraphics[width=0.32\textwidth]{images/insertion_sort_tc_analysis.png}
+\caption{Benchmark Sorting Execution Time Curves for Bubble, Selection, and Insertion Sort}
+\end{figure}
+
+\newpage
+
+\textbf{Analysis:}
+
+\textbf{1. Algorithmic Complexity Comparison:}
+\begin{center}
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Algorithm} & \textbf{Best Case} & \textbf{Average Case} & \textbf{Worst Case} & \textbf{Space} \\
+\hline
+Bubble Sort & $O(n^2)$ & $O(n^2)$ & $O(n^2)$ & $O(1)$ \\
+Selection Sort & $O(n^2)$ & $O(n^2)$ & $O(n^2)$ & $O(1)$ \\
+Insertion Sort & $O(n)$ & $O(n^2)$ & $O(n^2)$ & $O(1)$ \\
+\hline
+\end{tabular}
+\end{center}
+
+\textbf{2. Performance Analysis Across Input Distributions:}
+\begin{itemize}
+    \item \textbf{Bubble Sort:} In the standard unflagged implementation, $\frac{n(n-1)}{2}$ comparisons are executed across all passes regardless of initial distribution, leading to quadratic growth in all cases.
+    \item \textbf{Selection Sort:} Finds the minimum element in the remaining unsorted subarray at each iteration. It performs exactly $\frac{n(n-1)}{2}$ comparisons and at most $n-1$ swaps, causing the \textit{Random}, \textit{Sorted}, and \textit{Reverse-Sorted} lines to nearly overlap.
+    \item \textbf{Insertion Sort:} Demonstrates adaptive capability. On \textit{Sorted} inputs, the inner \texttt{while} loop terminates in $O(1)$ per element, giving total $\mathbf{O(n)}$ linear execution time. On \textit{Reverse-Sorted} inputs, every element must shift across the sorted prefix, resulting in maximal $\frac{n(n-1)}{2}$ shift operations ($\mathbf{O(n^2)}$).
+\end{itemize}
+
+\newpage
+
+% ==============================================================================
+% PROBLEM 3: MATRIX OPERATIONS
+% ==============================================================================
+
+\begin{center}
+\textbf{Computer Science and Engineering Department, SVNIT, Surat}\\
+\textbf{M.Tech. I -- Semester I}\\
+\textbf{Design and Analysis of Algorithm (CSDS103)}\\
+\textbf{Lab Assignment 2 -- Problem 3}
+\end{center}
+
+\vspace{0.4cm}
+
+\textbf{Problem Statement}
+
+\textbf{Title: Matrix Operations Analysis}
+
+Implement Matrix Addition ($O(n^2)$), Matrix Multiplication ($O(n^3)$), and Matrix Transpose ($O(n^2)$) algorithms for square matrices of varying dimension sizes ($n = 10, 50, 100, 200, 500$). Benchmark and measure execution times for all three operations, generate comparative plots of matrix dimension versus execution time, and analyze their theoretical and empirical complexity.
+
+\vspace{0.3cm}
+
+\textbf{Code:}
+
+\begin{lstlisting}[language=Python]
+import random
+import sys
+import time
+import matplotlib.pyplot as plt
+from pathlib import Path
+
+
+CURRENT_DIR = Path(__file__).resolve().parent
+DEFAULT_FILE_PATH = CURRENT_DIR / "sample_input_3.txt"
+DEFAULT_ROW_SIZES = [10, 50, 100, 200, 500]
+
+
+def generate_sample_input_file(filepath: str | Path = DEFAULT_FILE_PATH, sizes: list[int] = DEFAULT_ROW_SIZES) -> str:
+    """
+    Generates a sample input file containing two matrices (Matrix A and Matrix B)
+    for each specified dimension size (e.g. 10x10, 50x50, 100x100, 200x200, 500x500).
+    """
+    filepath = Path(filepath)
+    if not filepath.is_absolute():
+        filepath = CURRENT_DIR / filepath
+
+    lines = []
+
+    for row_size in sizes:
+        lines.append(f"# Size: {row_size}\n{row_size}")
+        
+        # Generate Matrix A (row_size x row_size)
+        lines.append(f"# Matrix A ({row_size}x{row_size})")
+        for _ in range(row_size):
+            row = [random.randint(1, 100) for _ in range(row_size)]
+            lines.append(" ".join(map(str, row)))
+            
+        # Generate Matrix B (row_size x row_size)
+        lines.append(f"# Matrix B ({row_size}x{row_size})")
+        for _ in range(row_size):
+            row = [random.randint(1, 100) for _ in range(row_size)]
+            lines.append(" ".join(map(str, row)))
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+
+    print(f"Sample input file generated at: {filepath}")
+    return str(filepath)
+
+
+def read_input_from_file(filepath: str | Path = DEFAULT_FILE_PATH) -> dict[int, tuple[list[list[int]], list[list[int]]]]:
+    """
+    Reads the two matrices (A, B) for each dimension size from the input file.
+    Returns:
+        {size: (matrix_A, matrix_B), ...}
+    """
+    filepath = Path(filepath)
+    if not filepath.is_absolute():
+        filepath = CURRENT_DIR / filepath
+
+    if not filepath.exists():
+        generate_sample_input_file(filepath)
+
+    with open(filepath, "r", encoding="utf-8") as f:
+        raw_lines = [line.strip() for line in f if line.strip() and not line.strip().startswith("#")]
+
+    if not raw_lines:
+        raise ValueError(f"Input file {filepath} is empty or corrupted.")
+
+    tokens: list[int] = []
+    for line in raw_lines:
+        tokens.extend([int(x) for x in line.replace(",", " ").split() if x.strip()])
+
+    if not tokens:
+        raise ValueError("No numeric data found in input file.")
+
+    idx = 0
+    datasets: dict[int, tuple[list[list[int]], list[list[int]]]] = {}
+
+    while idx < len(tokens):
+        sz = tokens[idx]
+        idx += 1
+        
+        # Read Matrix A
+        mat_A = []
+        for _ in range(sz):
+            mat_A.append(tokens[idx : idx + sz])
+            idx += sz
+            
+        # Read Matrix B
+        mat_B = []
+        for _ in range(sz):
+            mat_B.append(tokens[idx : idx + sz])
+            idx += sz
+
+        datasets[sz] = (mat_A, mat_B)
+
+    return datasets
+
+
+def matrix_addition(A: list[list[int]], B: list[list[int]]) -> list[list[int]]:
+    """
+    Performs element-wise matrix addition: C = A + B
+    Time Complexity: O(n^2)
+    """
+    n = len(A)
+    C = [[A[i][j] + B[i][j] for j in range(n)] for i in range(n)]
+    return C
+
+
+def matrix_multiplication(A: list[list[int]], B: list[list[int]]) -> list[list[int]]:
+    """
+    Performs matrix multiplication: C = A * B
+    Time Complexity: O(n^3)
+    """
+    n = len(A)
+    C = [[0] * n for _ in range(n)]
+    for i in range(n):
+        for j in range(n):
+            for k in range(n):
+                C[i][j] += A[i][k] * B[k][j]
+    return C
+
+
+def matrix_transpose(A: list[list[int]]) -> list[list[int]]:
+    """
+    Computes transpose of matrix: A^T
+    Time Complexity: O(n^2)
+    """
+    n = len(A)
+    C = [[A[j][i] for j in range(n)] for i in range(n)]
+    return C
+
+
+def measure_operation_time(op_type: str, mat_A: list[list[int]], mat_B: list[list[int]]) -> float:
+    """
+    Measures the average execution time in microseconds (µs).
+    Adjusts iteration count based on matrix order for accurate and fast benchmarking.
+    """
+    n = len(mat_A)
+    
+    # Adaptive iterations based on matrix size to balance accuracy & performance
+    if n <= 10:
+        iterations = 100
+    elif n <= 50:
+        iterations = 15
+    elif n <= 100:
+        iterations = 5
+    elif n <= 200:
+        iterations = 2
+    else:
+        iterations = 1
+
+    if op_type == "add":
+        start = time.perf_counter()
+        for _ in range(iterations):
+            matrix_addition(mat_A, mat_B)
+        total_time = time.perf_counter() - start
+    elif op_type == "multiply":
+        start = time.perf_counter()
+        for _ in range(iterations):
+            matrix_multiplication(mat_A, mat_B)
+        total_time = time.perf_counter() - start
+    elif op_type == "transpose":
+        start = time.perf_counter()
+        for _ in range(iterations):
+            matrix_transpose(mat_A)
+        total_time = time.perf_counter() - start
+    else:
+        raise ValueError(f"Unknown operation type: {op_type}")
+
+    # Average execution time in microseconds (µs)
+    return (total_time / iterations) * 1e6
+
+
+def plot_and_compare_matrix_operations(datasets: dict[int, tuple[list[list[int]], list[list[int]]]] | None = None):
+    """
+    Benchmarks Matrix Addition, Multiplication, and Transpose across all matrix orders
+    and plots all 3 operations in 1 comparative graph.
+    """
+    if datasets is None:
+        datasets = read_input_from_file()
+
+    sizes = sorted(datasets.keys())
+    operations = ["add", "multiply", "transpose"]
+    op_styles = {
+        "add": {"color": "#1f77b4", "marker": "o", "label": "Matrix Addition (O(n²))"},
+        "multiply": {"color": "#d62728", "marker": "s", "label": "Matrix Multiplication (O(n³))"},
+        "transpose": {"color": "#2ca02c", "marker": "^", "label": "Matrix Transpose (O(n²))"}
+    }
+
+    results: dict[str, list[float]] = {op: [] for op in operations}
+
+    print("\n--- Benchmark Results for Matrix Operations (in µs) ---")
+    print(f"{'Order (n x n)':<15} | " + " | ".join(f"{op.capitalize():<18}" for op in operations))
+    print("-" * 75)
+
+    for sz in sizes:
+        mat_A, mat_B = datasets[sz]
+        row_str = f"{f'{sz}x{sz}':<15} | "
+        for op in operations:
+            avg_time_us = measure_operation_time(op, mat_A, mat_B)
+            results[op].append(avg_time_us)
+            row_str += f"{avg_time_us:<18.2f} | "
+        print(row_str)
+
+    # Plot all 3 operations in a single graph
+    plt.figure(figsize=(10, 6))
+    for op in operations:
+        plt.plot(
+            sizes,
+            results[op],
+            marker=op_styles[op]["marker"],
+            color=op_styles[op]["color"],
+            linewidth=2,
+            markersize=7,
+            label=op_styles[op]["label"]
+        )
+
+    plt.title("Matrix Operations: Dimension Size (n) vs Execution Time", fontsize=13, fontweight="bold")
+    plt.xlabel("Matrix Dimension Size (n for n x n matrix)", fontsize=11)
+    plt.ylabel("Execution Time (µs)", fontsize=11)
+    plt.xticks(sizes, [f"{s}x{s}" for s in sizes])
+    plt.grid(True, linestyle="--", alpha=0.6)
+    plt.legend(loc="upper left", fontsize=10)
+    plt.tight_layout()
+
+    # Save figure to images folder if available, else current directory
+    images_dir = CURRENT_DIR.parent.parent / "images"
+    save_path = images_dir / "matrix_operations_tc_analysis.png" if images_dir.exists() else CURRENT_DIR / "matrix_operations_tc_analysis.png"
+    plt.savefig(save_path, dpi=300)
+    print(f"[Plot Saved] Saved figure to: {save_path}")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1 and any(arg.lower().lstrip("-") == "new" for arg in sys.argv[1:]):
+        generate_sample_input_file()
+
+    datasets = read_input_from_file()
+    plot_and_compare_matrix_operations(datasets=datasets)
+\end{lstlisting}
+
+\newpage
+
+\textbf{Output:}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{images/matrix_operations_tc_analysis.png}
+\caption{Comparative Execution Time Curves for Matrix Addition ($O(n^2)$), Transpose ($O(n^2)$), and Multiplication ($O(n^3)$)}
+\end{figure}
+
+\newpage
+
+\textbf{Analysis:}
+
+\textbf{1. Time and Space Complexity Formulation:}
+For two $n \times n$ square matrices $A$ and $B$:
+\begin{itemize}
+    \item \textbf{Matrix Addition ($C[i][j] = A[i][j] + B[i][j]$):}
+    \begin{itemize}
+        \item \textbf{Time Complexity:} Traverses $n$ rows and $n$ columns $\implies n \times n = \mathbf{O(n^2)}$ operations.
+        \item \textbf{Space Complexity:} Allocates an $n \times n$ result matrix $\implies \mathbf{O(n^2)}$ auxiliary space.
+    \end{itemize}
+    \item \textbf{Matrix Transpose ($C[i][j] = A[j][i]$):}
+    \begin{itemize}
+        \item \textbf{Time Complexity:} Traverses $n \times n$ elements $\implies \mathbf{O(n^2)}$ operations.
+        \item \textbf{Space Complexity:} $\mathbf{O(n^2)}$ for non-in-place transposition ($\mathbf{O(1)}$ if performed in-place on $A$).
+    \end{itemize}
+    \item \textbf{Matrix Multiplication ($C[i][j] = \sum_{k=0}^{n-1} A[i][k] \cdot B[k][j]$):}
+    \begin{itemize}
+        \item \textbf{Time Complexity:} Three nested loops $(i, j, k)$ from $0$ to $n-1$ perform $n^3$ multiplications and $n^3 - n^2$ additions $\implies \mathbf{O(n^3)}$ time complexity.
+        \item \textbf{Space Complexity:} Allocates an $n \times n$ product matrix $\implies \mathbf{O(n^2)}$ auxiliary space.
+    \end{itemize}
+\end{itemize}
+
+\textbf{2. Empirical Benchmark Evaluation ($n = 10, 50, 100, 200, 500$):}
+\begin{itemize}
+    \item At small orders ($n \le 50$), all operations execute in under $1\,\text{ms}$.
+    \item As dimension size increases to $n = 500$, Matrix Addition and Transpose maintain flat quadratic scaling ($O(n^2)$), completing in $\approx 15\text{--}20\,\text{ms}$.
+    \item Matrix Multiplication undergoes steep cubic growth ($O(n^3)$), scaling by $(500/100)^3 = 125\times$ from $n=100$ to $n=500$, clearly dominating overall execution time as predicted by theoretical asymptotic complexity.
+\end{itemize}
+
+\end{document}

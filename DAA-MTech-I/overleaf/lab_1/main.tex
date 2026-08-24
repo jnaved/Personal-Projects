@@ -1,0 +1,1264 @@
+\documentclass[12pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{newtxtext,newtxmath} % Times-style font
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{float}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+
+% Keep entire document at 12 pt
+\AtBeginDocument{
+    \fontsize{12pt}{14pt}\selectfont
+}
+
+% ------------------------------------------------
+% Header
+% ------------------------------------------------
+
+\pagestyle{fancy}
+\fancyhf{}
+
+\fancyhead[L]{Name: \underline{Shaik Jnaved}}
+\fancyhead[R]{Enrollment No.: \underline{P26DS001}}
+
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{15pt}
+
+% ------------------------------------------------
+% Code formatting
+% ------------------------------------------------
+
+\lstset{
+    basicstyle=\ttfamily\fontsize{10pt}{12pt}\selectfont,
+    breaklines=true,
+    frame=single,
+    columns=fullflexible,
+    keepspaces=true,
+    showstringspaces=false
+}
+
+\begin{document}
+
+% ==============================================================================
+% PROBLEM 1
+% ==============================================================================
+
+\begin{center}
+\textbf{Computer Science and Engineering Department, SVNIT, Surat}\\
+\textbf{M.Tech. I -- Semester I}\\
+\textbf{Design and Analysis of Algorithm (CSDS103)}\\
+\textbf{Lab Assignment 1 -- Problem 1}
+\end{center}
+
+\vspace{0.4cm}
+
+\textbf{Problem Statement}
+
+\textbf{Title: Employee Name Sorting and Duplicate Detection}
+
+An organisation maintains the names of $n$ employees in an unsorted list. Design an algorithm to arrange the names in lexicographical order and display all names that occur more than once along with their occurrence counts without using built-in sorting functions (e.g., \texttt{sort()} or \texttt{sorted()}). If no duplicate names exist, report the same.
+
+\vspace{0.3cm}
+
+\textbf{Code:}
+
+\begin{lstlisting}[language=Python]
+"""
+================================================================================
+Employee Name Sorting and Duplicate Detection Algorithm (Problem 1)
+================================================================================
+Problem Statement:
+Design an algorithm to arrange n employee names in lexicographical order 
+and display all duplicate names without using built-in sorting functions.
+
+COMPLEXITY ANALYSIS (ENTIRE SOLUTION):
+--------------------------------------------------------------------------------
+Let N = total_employee_count (number of employee names)
+Let K = max_name_len (maximum length of an employee name string)
+
+Note on Notation:
+The time complexity is O(N * K * log N), NOT O(N * log(N * K)).
+The log factor comes from partitioning N array elements (log2 N levels),
+while the string length K acts as a linear multiplier for each comparison.
+
+1. TIME COMPLEXITY:
+   - Best-Case Time Complexity:    O(N * K * log N)
+   - Average-Case Time Complexity: O(N * K * log N)
+   - Worst-Case Time Complexity:   O(N * K * log N)
+   - Duplicate Scan Phase:          O(N * K)
+
+2. AUXILIARY SPACE COMPLEXITY:
+   - Auxiliary Space Complexity:   O(N * K)
+
+3. DUPLICATE DETECTION WITHOUT SORTING (HASH TABLE):
+   - Best / Average / Worst-case Time:     O(N * K)
+   - Auxiliary Space Complexity:           O(N * K)
+================================================================================
+"""
+
+from typing import List, Dict
+
+
+def compare_strings(first_name: str, second_name: str) -> int:
+    """
+    Compares two strings lexicographically using standard case-sensitive ASCII values.
+    Returns -1 if first_name < second_name, 0 if equal, 1 if first_name > second_name.
+    """
+    first_string_len = len(first_name)
+    second_string_len = len(second_name)
+    min_len = min(first_string_len, second_string_len)
+
+    for character_index in range(min_len):
+        first_character = first_name[character_index]
+        second_character = second_name[character_index]
+        
+        if first_character != second_character:
+            return -1 if first_character < second_character else 1
+
+    if first_string_len < second_string_len:
+        return -1
+    elif first_string_len > second_string_len:
+        return 1
+    return 0
+
+
+def custom_merge(left_sublist: List[str], right_sublist: List[str]) -> List[str]:
+    """
+    Merges two sorted lists into a single sorted list using custom string comparison.
+    """
+    merged_result = []
+    left_index = 0
+    right_index = 0
+    
+    while left_index < len(left_sublist) and right_index < len(right_sublist):
+        comparison_result = compare_strings(
+            left_sublist[left_index], 
+            right_sublist[right_index]
+        )
+        if comparison_result <= 0:
+            merged_result.append(left_sublist[left_index])
+            left_index += 1
+        else:
+            merged_result.append(right_sublist[right_index])
+            right_index += 1
+            
+    while left_index < len(left_sublist):
+        merged_result.append(left_sublist[left_index])
+        left_index += 1
+        
+    while right_index < len(right_sublist):
+        merged_result.append(right_sublist[right_index])
+        right_index += 1
+        
+    return merged_result
+
+
+def merge_sort_names(employee_names: List[str]) -> List[str]:
+    """
+    Sorts a list of employee names in lexicographical order using custom Merge Sort.
+    Does not use any built-in sorting functions (such as sort() or sorted()).
+    """
+    total_employee_count = len(employee_names)
+    if total_employee_count <= 1:
+        return list(employee_names)
+    
+    middle_index = total_employee_count // 2
+    left_half = merge_sort_names(employee_names[:middle_index])
+    right_half = merge_sort_names(employee_names[middle_index:])
+    
+    return custom_merge(left_half, right_half)
+
+
+def find_duplicates_after_sorting(sorted_employee_names: List[str]) -> Dict[str, int]:
+    """
+    Identifies duplicate names from an already sorted list in a single linear pass.
+    """
+    duplicate_names_map = {}
+    total_names_count = len(sorted_employee_names)
+    if total_names_count <= 1:
+        return duplicate_names_map
+
+    current_index = 0
+    while current_index < total_names_count:
+        occurrence_count = 1
+        scan_index = current_index + 1
+        
+        while (
+            scan_index < total_names_count and 
+            compare_strings(sorted_employee_names[current_index], sorted_employee_names[scan_index]) == 0
+        ):
+            occurrence_count += 1
+            scan_index += 1
+        
+        if occurrence_count > 1:
+            target_name = sorted_employee_names[current_index]
+            duplicate_names_map[target_name] = occurrence_count
+            
+        current_index = scan_index
+
+    return duplicate_names_map
+
+
+def find_duplicates_without_sorting(employee_names: List[str]) -> Dict[str, int]:
+    """
+    Detects duplicates without sorting using a Hash Table (Frequency Map).
+    """
+    frequency_map: Dict[str, int] = {}
+    
+    for name in employee_names:
+        frequency_map[name] = frequency_map.get(name, 0) + 1
+        
+    duplicate_names_map = {
+        name: count for name, count in frequency_map.items() if count > 1
+    }
+            
+    return duplicate_names_map
+
+
+if __name__ == "__main__":
+    # employee_names = ["John", "alice", "Bob", "John", "Alice", "Charlie", "bob", "David"]
+    employee_names = ["Aarthi", "Aarav", "Jay", "isha", "aarthi"]
+
+    sorted_employee_names = merge_sort_names(employee_names)
+    duplicate_names_map = find_duplicates_after_sorting(sorted_employee_names)
+
+    print("Original List:", employee_names)
+    print("Sorted List:", sorted_employee_names)
+    if duplicate_names_map:
+        print("Duplicate Names:")
+        for name, count in duplicate_names_map.items():
+            print(f"  '{name}' occurs {count} times")
+    else:
+        print("No duplicate names exist.")
+\end{lstlisting}
+
+\newpage
+
+\textbf{Output:}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{images/employee_sorter.png}
+\caption{Execution Output for Problem 1: Employee Name Sorting and Duplicate Detection}
+\end{figure}
+
+\newpage
+
+\textbf{Analysis:}
+
+\textbf{1. Time Complexity Analysis:}
+Let $N$ denote the total number of employee names and $K$ denote the maximum length of an employee name string.
+
+\begin{itemize}
+    \item \textbf{Sorting Phase (Custom Merge Sort):} Merge Sort recursively divides the list of size $N$ into two halves down to $\log_2 N$ levels. At each recursive level, merging elements takes $O(N)$ string comparisons, where each string comparison costs at most $O(K)$ character comparisons.
+    $$\text{Recurrence Relation: } T(N) = 2T(N/2) + O(N \cdot K) \implies T_{\text{sort}}(N) = O(N \cdot K \log N)$$
+    Since Merge Sort consistently divides the input array irrespective of initial order, its Best-Case, Average-Case, and Worst-Case time complexity are all $O(N \cdot K \log N)$.
+    \item \textbf{Duplicate Scan Phase (Linear Scan on Sorted Array):} A single linear pass scans adjacent identical names using string comparisons, taking $T_{\text{scan}}(N) = O(N \cdot K)$.
+    \item \textbf{Total Time Complexity:} $T(N) = O(N \cdot K \log N) + O(N \cdot K) = \mathbf{O(N \cdot K \log N)}$.
+\end{itemize}
+
+\textbf{2. Auxiliary Space Complexity:}
+Merge Sort requires auxiliary space for temporary sublists during merging ($O(N \cdot K)$) and recursion stack space ($O(K \log N)$). Hence, total auxiliary space complexity is $\mathbf{O(N \cdot K)}$.
+
+\textbf{3. Alternative Approach: Duplicate Detection Without Sorting (Hash Table):}
+A Frequency Map (Hash Table) processes all names in a single pass of $O(N \cdot K)$ time complexity and requires $O(N \cdot K)$ auxiliary space.
+
+\newpage
+
+% ==============================================================================
+% PROBLEM 2
+% ==============================================================================
+
+\begin{center}
+\textbf{Computer Science and Engineering Department, SVNIT, Surat}\\
+\textbf{M.Tech. I -- Semester I}\\
+\textbf{Design and Analysis of Algorithm (CSDS103)}\\
+\textbf{Lab Assignment 1 -- Problem 2}
+\end{center}
+
+\vspace{0.4cm}
+
+\textbf{Problem Statement}
+
+\textbf{Title: Locally Balanced Matrix}
+
+An $n \times n$ integer matrix $A$ is defined as locally balanced if each element $A[i][j]$ equals the sum of its valid 4-directional neighbouring elements (Up, Down, Left, Right). Only neighbours that fall strictly within matrix boundaries are considered. Design an algorithm to evaluate whether the matrix is locally balanced. If the matrix is not locally balanced, report the first violating element in row-major order, along with its position $(i, j)$, value $A[i][j]$, and calculated neighbour sum.
+
+\vspace{0.3cm}
+
+\textbf{Code:}
+
+\begin{lstlisting}[language=Python]
+"""
+================================================================================
+Problem 2 Locally Balanced Matrix
+================================================================================
+Problem Description:
+An n x n integer matrix is locally balanced if each element A[i][j] equals the sum 
+of its valid 4-directional neighbouring elements (Up, Down, Left, Right). 
+Only neighbours within matrix boundaries are considered.
+
+If the matrix is not balanced, report the first violating element in row-major 
+order along with its position (i, j), value A[i][j], and neighbour sum.
+
+COMPLEXITY ANALYSIS:
+--------------------------------------------------------------------------------
+1. Time Complexity:
+   - Best-Case Time Complexity:    O(1)
+     Occurs when the first element A[0][0] violates the condition.
+     
+   - Average-Case Time Complexity: O(n^2)
+     On average, inspecting elements in row-major order up to a violation takes 
+     O(n^2) operations.
+     
+   - Worst-Case Time Complexity:   O(n^2)
+     Occurs when the matrix is locally balanced or the violation is at A[n-1][n-1]. 
+     For an n x n matrix, there are n^2 elements, and checking valid neighbours 
+     takes at most 4 operations per element (constant time O(1)). 
+     Total Time = n^2 * O(1) = O(n^2).
+
+2. Auxiliary Space Complexity:     O(1)
+   Only a few primitive scalar variables (indices, neighbour sums) are used. 
+   No extra matrix or data structure is allocated.
+================================================================================
+"""
+
+from typing import List, Tuple, Optional
+
+
+def check_locally_balanced_matrix(
+    matrix: List[List[int]]
+) -> Tuple[bool, Optional[Tuple[int, int]], Optional[int], Optional[int]]:
+    """
+    Checks whether an n x n integer matrix is locally balanced.
+    
+    Returns:
+        A tuple (is_balanced, position, element_value, neighbour_sum):
+        - is_balanced: True if all elements satisfy the condition, False otherwise.
+        - position: (row, col) tuple of the first violating element, or None if balanced.
+        - element_value: The value at the violating position, or None if balanced.
+        - neighbour_sum: The calculated sum of valid neighbours, or None if balanced.
+    """
+    matrix_size = len(matrix)
+    if matrix_size == 0:
+        return True, None, None, None
+
+    # 4-directional neighbour offsets: Up, Down, Left, Right
+    neighbour_directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+    # Row-major traversal to find the first violation
+    for row_index in range(matrix_size):
+        for col_index in range(matrix_size):
+            neighbour_sum = 0
+
+            # Sum only valid neighbours within matrix boundaries
+            for delta_row, delta_col in neighbour_directions:
+                neighbor_row = row_index + delta_row
+                neighbor_col = col_index + delta_col
+
+                # Boundary Check
+                if 0 <= neighbor_row < matrix_size and 0 <= neighbor_col < matrix_size:
+                    neighbour_sum += matrix[neighbor_row][neighbor_col]
+
+            current_element_value = matrix[row_index][col_index]
+
+            # Violation Check
+            if current_element_value != neighbour_sum:
+                return (
+                    False,
+                    (row_index, col_index),
+                    current_element_value,
+                    neighbour_sum,
+                )
+
+    return True, None, None, None
+
+
+if __name__ == "__main__":
+    test_matrices = [
+        {
+            "description": "Locally Balanced Matrix (All zeroes)",
+            "matrix": [
+                [0, 0],
+                [0, 0]
+            ]
+        },
+        {
+            "description": "Unbalanced Matrix (Violation at interior)",
+            "matrix": [
+                [5, 10, 5],
+                [10, 99, 10],
+                [5, 10, 5]
+            ]
+        },
+        {
+            "description": "Unbalanced Matrix (Violation at corner A[0][0])",
+            "matrix": [
+                [10, 2],
+                [3, 4]
+            ]
+        }
+    ]
+
+    for test in test_matrices:
+        print(f"Test: {test['description']}")
+        print("Matrix:")
+        for row in test["matrix"]:
+            print(" ", row)
+            
+        is_balanced, pos, val, n_sum = check_locally_balanced_matrix(test["matrix"])
+        
+        if is_balanced:
+            print("Result: Matrix is LOCALLY BALANCED.")
+        else:
+            print("Result: Matrix is NOT LOCALLY BALANCED.")
+            print("  First Violating Element in Row-Major Order:")
+            print(f"   - Position: (row={pos[0]}, col={pos[1]})")
+            print(f"   - Value: A[{pos[0]}][{pos[1]}] = {val}")
+            print(f"   - Sum of Valid Neighbours: {n_sum}")
+        print()
+\end{lstlisting}
+
+\newpage
+
+\textbf{Output:}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{images/locally_balanced_matrix.png}
+\caption{Execution Output for Problem 2: Locally Balanced Matrix Verification}
+\end{figure}
+
+\newpage
+
+\textbf{Analysis:}
+
+\textbf{1. Handling of Boundary, Corner, and Interior Cells:}
+\begin{itemize}
+    \item \textbf{Corner Elements ($4$ cells):} Positions $(0,0), (0,n-1), (n-1,0), (n-1,n-1)$ have exactly $2$ valid neighbours.
+    \item \textbf{Perimeter Boundary Elements ($4(n-2)$ cells):} Non-corner boundary cells have exactly $3$ valid neighbours.
+    \item \textbf{Interior Elements ($(n-2)^2$ cells):} Interior cells have all $4$ valid neighbours (Up, Down, Left, Right).
+\end{itemize}
+The boundary checking condition \texttt{0 <= neighbor\_row < n and 0 <= neighbor\_col < n} guarantees valid accumulation without index out-of-bounds exceptions.
+
+\textbf{2. Time Complexity Analysis:}
+Let $n$ denote the number of rows and columns of the matrix (total elements $N = n^2$).
+\begin{itemize}
+    \item \textbf{Best-Case Time Complexity:} $\mathbf{O(1)}$, occurring when the first inspected cell $A[0][0]$ immediately violates the condition.
+    \item \textbf{Average-Case Time Complexity:} $\mathbf{O(n^2)}$, scanning a fraction of the $n^2$ cells before encountering a violation.
+    \item \textbf{Worst-Case Time Complexity:} $\mathbf{O(n^2)}$, occurring when the matrix is completely balanced or when the sole violation is located at the final element $A[n-1][n-1]$. Each cell evaluation takes at most $4$ arithmetic operations ($O(1)$), yielding $n^2 \times O(1) = O(n^2)$.
+\end{itemize}
+
+\textbf{3. Auxiliary Space Complexity:}
+The algorithm operates directly in-place on the input matrix without allocating additional arrays or matrices. Only primitive scalar loop indices and accumulator variables are used, yielding $\mathbf{O(1)}$ auxiliary space complexity.
+
+\newpage
+
+% ==============================================================================
+% PROBLEM 3
+% ==============================================================================
+
+\begin{center}
+\textbf{Computer Science and Engineering Department, SVNIT, Surat}\\
+\textbf{M.Tech. I -- Semester I}\\
+\textbf{Design and Analysis of Algorithm (CSDS103)}\\
+\textbf{Lab Assignment 1 -- Problem 3}
+\end{center}
+
+\vspace{0.4cm}
+
+\textbf{Problem Statement}
+
+\textbf{Title: First Unique Employee}
+
+A company records the sequence in which $n$ employees access a system. An employee is called unique if their name occurs exactly once in the complete sequence. Given a sequence of $n$ employee names, design two solutions to find the first unique employee name: (1) using ONLY the given list and repeated comparisons with zero additional data structures ($O(1)$ auxiliary space), and (2) using an additional data structure (Hash Map / Frequency Map) to optimize time complexity.
+
+\vspace{0.3cm}
+
+\textbf{Code:}
+
+\begin{lstlisting}[language=Python]
+"""
+================================================================================
+Problem 3 First Unique Employee
+================================================================================
+Problem Description:
+A company records the sequence in which employees access a system. An employee 
+is called unique if their name occurs exactly once in the complete sequence.
+
+Given a sequence of n employee names, design two solutions to find the first 
+unique name:
+1. Solution 1: Uses ONLY the given list and repeated comparisons.
+2. Solution 2: Uses an additional data structure (Hash Map / Frequency Map).
+
+Example:
+Input: ["Amit", "Neha", "Amit", "Rahul", "Neha", "Karan", "Rahul"]
+Output: "Karan"
+
+COMPLEXITY COMPARISON:
+--------------------------------------------------------------------------------
+Approach 1 (List-Only Repeated Comparisons):
+- Best-Case Time:    O(n * k)   (When first element is unique and compared across sequence)
+- Average-Case Time: O(n^2 * k)
+- Worst-Case Time:   O(n^2 * k) (When all elements are duplicates or unique is at the end)
+- Auxiliary Space:   O(1)
+
+Approach 2 (Hash Map / Frequency Map):
+- Best-Case Time:    O(n * k)
+- Average-Case Time: O(n * k)
+- Worst-Case Time:   O(n * k)
+- Auxiliary Space:   O(n * k)
+================================================================================
+"""
+
+from typing import List, Optional, Dict
+
+
+def compare_strings(first_name: str, second_name: str) -> int:
+    """
+    Compares two strings lexicographically using standard case-sensitive ASCII values.
+    Returns -1 if first_name < second_name, 0 if equal, 1 if first_name > second_name.
+    """
+    first_string_len = len(first_name)
+    second_string_len = len(second_name)
+    min_len = min(first_string_len, second_string_len)
+
+    for character_index in range(min_len):
+        first_character = first_name[character_index]
+        second_character = second_name[character_index]
+        
+        if first_character != second_character:
+            return -1 if first_character < second_character else 1
+
+    if first_string_len < second_string_len:
+        return -1
+    elif first_string_len > second_string_len:
+        return 1
+    return 0
+
+
+def find_first_unique_list_only(employee_sequence: List[str]) -> Optional[str]:
+    """
+    Approach 1: Finds the first unique employee using ONLY the given list and 
+    repeated comparisons. No additional data structures are used.
+    
+    Time Complexity:  O(n^2 * k) where n = len(sequence), k = max_name_len
+    Auxiliary Space:  O(1)
+    """
+    sequence_length = len(employee_sequence)
+
+    for current_index in range(sequence_length):
+        target_name = employee_sequence[current_index]
+        is_duplicate = False
+
+        for scan_index in range(sequence_length):
+            if current_index != scan_index:
+                # Compare target_name with every other element in the list using custom character-by-character comparison
+                if compare_strings(target_name, employee_sequence[scan_index]) == 0:
+                    is_duplicate = True
+                    break  # Found duplicate, move to next target_name
+
+        if not is_duplicate:
+            return target_name
+
+    return None  # No unique employee found
+
+
+def find_first_unique_hash_map(employee_sequence: List[str]) -> Optional[str]:
+    """
+    Approach 2: Finds the first unique employee using an additional data structure 
+    (Hash Table / Frequency Map).
+    
+    Time Complexity:  O(n * k)
+    Auxiliary Space:  O(n * k)
+    """
+    frequency_map: Dict[str, int] = {}
+
+    # Pass 1: Build frequency count dictionary
+    for name in employee_sequence:
+        frequency_map[name] = frequency_map.get(name, 0) + 1
+
+    # Pass 2: Find the first name in original sequence order with count == 1
+    for name in employee_sequence:
+        if frequency_map[name] == 1:
+            return name
+
+    return None  # No unique employee found
+
+
+if __name__ == "__main__":
+    test_cases = [
+        {
+            "description": "Standard Assignment Example",
+            "sequence": ["Amit", "Neha", "Amit", "Rahul", "Neha", "Karan", "Rahul"]
+        },
+        {
+            "description": "First Element is Unique",
+            "sequence": ["UniqueUser", "Bob", "Alice", "Bob", "Alice"]
+        },
+        {
+            "description": "No Unique Employees (All Duplicates)",
+            "sequence": ["Smith", "John", "Smith", "John", "Alex", "Alex"]
+        },
+        {
+            "description": "All Employees Unique",
+            "sequence": ["Alpha", "Beta", "Gamma", "Delta"]
+        },
+        {
+            "description": "Single Employee Sequence",
+            "sequence": ["SoloEmployee"]
+        }
+    ]
+
+    for test in test_cases:
+        print(f"Test Case: {test['description']}")
+        print(f"Sequence: {test['sequence']}")
+        
+        result_list = find_first_unique_list_only(test["sequence"])
+        result_hash = find_first_unique_hash_map(test["sequence"])
+
+        print(f"Approach 1 (List-Only O(n^2)):  {result_list if result_list else 'No unique employee'}")
+        print(f"Approach 2 (Hash Map O(n)):    {result_hash if result_hash else 'No unique employee'}")
+        
+        assert result_list == result_hash, "Mismatch between approaches!"
+        print()
+\end{lstlisting}
+
+\newpage
+
+\textbf{Output:}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{images/first_unique_employee.png}
+\caption{Execution Output for Problem 3: First Unique Employee Identification}
+\end{figure}
+
+\newpage
+
+\textbf{Analysis:}
+
+\textbf{1. Approach 1 (List-Only Repeated Comparisons):}
+\begin{itemize}
+    \item \textbf{Algorithm:} For each candidate element at index $i$, a linear scan checks all other indices $j \ne i$. The first element with 0 matching duplicates is returned.
+    \item \textbf{Best-Case Time Complexity:} $\mathbf{O(n \cdot K)}$, occurring when the first element in the sequence is unique (validated after scanning $n-1$ elements).
+    \item \textbf{Worst-Case Time Complexity:} $\mathbf{O(n^2 \cdot K)}$, occurring when all elements are duplicates or the unique element appears at the very end.
+    \item \textbf{Auxiliary Space Complexity:} $\mathbf{O(1)}$, utilizing strictly zero additional data structures.
+\end{itemize}
+
+\textbf{2. Approach 2 (Hash Map / Frequency Map):}
+\begin{itemize}
+    \item \textbf{Algorithm:} In Pass 1, build a frequency dictionary of all $n$ strings ($O(n \cdot K)$). In Pass 2, traverse the list in original order and return the first element with frequency 1 ($O(n \cdot K)$).
+    \item \textbf{Time Complexity:} $\mathbf{O(n \cdot K)}$ across Best, Average, and Worst cases.
+    \item \textbf{Auxiliary Space Complexity:} $\mathbf{O(n \cdot K)}$, storing up to $n$ unique strings in the hash map.
+\end{itemize}
+
+\textbf{3. Algorithmic Trade-off Summary:}
+Approach 1 is optimal when memory is severely constrained ($O(1)$ space), whereas Approach 2 provides optimal linear time scalability ($O(n)$) for large access logs.
+
+\newpage
+
+% ==============================================================================
+% PROBLEM 4
+% ==============================================================================
+
+\begin{center}
+\textbf{Computer Science and Engineering Department, SVNIT, Surat}\\
+\textbf{M.Tech. I -- Semester I}\\
+\textbf{Design and Analysis of Algorithm (CSDS103)}\\
+\textbf{Lab Assignment 1 -- Problem 4}
+\end{center}
+
+\vspace{0.4cm}
+
+\textbf{Problem Statement}
+
+\textbf{Title: Stable Matrix}
+
+An $n \times n$ integer matrix $A$ is called stable if every non-boundary (interior) element satisfies $A[i][j] = A[i-1][j] + A[i+1][j] + A[i][j-1] + A[i][j+1]$. Determine whether the given matrix is stable. If it is not stable, report: (1) total count of violating elements, (2) positions $(i, j)$ of all violating elements, and (3) position having the maximum absolute difference $D(i, j) = |A[i][j] - (A[i-1][j] + A[i+1][j] + A[i][j-1] + A[i][j+1])|$.
+
+\vspace{0.3cm}
+
+\textbf{Code:}
+
+\begin{lstlisting}[language=Python]
+"""
+================================================================================
+Problem 4 Stable Matrix
+================================================================================
+Problem Description:
+An n x n integer matrix is called stable if every non-boundary (interior) element 
+satisfies:
+    A[i][j] = A[i-1][j] + A[i+1][j] + A[i][j-1] + A[i][j+1]
+
+Determine whether the matrix is stable. If it is not, report:
+1. Total number of violating elements.
+2. Positions (i, j) of all violating elements.
+3. Position having the maximum absolute difference D(i, j):
+    D(i, j) = |A[i][j] - (A[i-1][j] + A[i+1][j] + A[i][j-1] + A[i][j+1])|
+
+COMPLEXITY ANALYSIS:
+--------------------------------------------------------------------------------
+1. Time Complexity:
+   - Best-Case Time Complexity:    O(n^2)
+   - Worst-Case Time Complexity:   O(n^2)
+     To check stability across all non-boundary elements, the algorithm must 
+     evaluate (n-2) x (n-2) interior cells. Each cell requires 4 neighbour 
+     additions and 1 subtraction taking O(1) time. 
+     Total Time = (n-2)^2 * O(1) = O(n^2).
+
+2. Auxiliary Space Complexity:     O(1)  (or O(V) to store violating positions)
+   - Additional Matrix Required: NO. An additional matrix is NOT required because 
+     all neighbour checks read directly from the input matrix without modifying it.
+================================================================================
+"""
+
+from typing import List, Tuple, Optional
+
+
+def check_stable_matrix(
+    matrix: List[List[int]]
+) -> Tuple[bool, int, List[Tuple[int, int]], Optional[Tuple[int, int]], int]:
+    """
+    Checks stability of an n x n integer matrix across non-boundary elements.
+    
+    Returns:
+        (is_stable, violation_count, violating_positions, max_diff_position, max_abs_diff)
+    """
+    matrix_size = len(matrix)
+    
+    # Matrices of size less than 3 x 3 have no non-boundary (interior) elements
+    if matrix_size < 3:
+        return True, 0, [], None, 0
+
+    violating_positions = []
+    max_abs_diff = -1
+    max_diff_position = None
+
+    # Check only non-boundary (interior) elements: 1 <= row_index, col_index <= matrix_size - 2
+    for row_index in range(1, matrix_size - 1):
+        for col_index in range(1, matrix_size - 1):
+            neighbour_sum = (
+                matrix[row_index - 1][col_index]      # Up
+                + matrix[row_index + 1][col_index]    # Down
+                + matrix[row_index][col_index - 1]    # Left
+                + matrix[row_index][col_index + 1]    # Right
+            )
+            current_value = matrix[row_index][col_index]
+
+            if current_value != neighbour_sum:
+                violating_positions.append((row_index, col_index))
+                
+                # Calculate D(i, j) = |A[i][j] - Neighbour_Sum|
+                abs_difference = abs(current_value - neighbour_sum)
+                
+                if abs_difference > max_abs_diff:
+                    max_abs_diff = abs_difference
+                    max_diff_position = (row_index, col_index)
+
+    is_stable = len(violating_positions) == 0
+    return is_stable, len(violating_positions), violating_positions, max_diff_position, max_abs_diff if not is_stable else 0
+
+
+if __name__ == "__main__":
+    test_matrices = [
+        {
+            "description": "Stable Matrix (All zeroes)",
+            "matrix": [
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0]
+            ]
+        },
+        {
+            "description": "Unstable Matrix with Multiple Violations",
+            "matrix": [
+                [1, 2, 3, 4],
+                [5, 100, 20, 6],
+                [7, 30, 200, 8],
+                [9, 10, 11, 12]
+            ]
+        },
+        {
+            "description": "Small Matrix (2x2 - No interior elements)",
+            "matrix": [
+                [1, 2],
+                [3, 4]
+            ]
+        }
+    ]
+
+    for test in test_matrices:
+        print(f"Test: {test['description']}")
+        print("Matrix:")
+        for row in test["matrix"]:
+            print(" ", row)
+            
+        is_stable, count, positions, max_pos, max_diff = check_stable_matrix(test["matrix"])
+        
+        if is_stable:
+            print("Result: Matrix is STABLE.")
+        else:
+            print("Result: Matrix is NOT STABLE.")
+            print(f"  - Total Violating Elements Count: {count}")
+            print(f"  - Violating Positions (row, col): {positions}")
+            print(f"  - Position with Max Absolute Difference D(i, j): {max_pos}")
+            print(f"  - Maximum Absolute Difference D(i, j): {max_diff}")
+        print()
+\end{lstlisting}
+
+\newpage
+
+\textbf{Output:}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{images/stable_matrix.png}
+\caption{Execution Output for Problem 4: Stable Matrix Verification}
+\end{figure}
+
+\newpage
+
+\textbf{Analysis:}
+
+\textbf{1. Algorithmic Formulation:}
+Interior elements are located in the index sub-range $1 \le i, j \le n-2$. For each interior cell, the 4-directional sum is computed:
+$$S(i, j) = A[i-1][j] + A[i+1][j] + A[i][j-1] + A[i][j+1]$$
+If $A[i][j] \ne S(i, j)$, $(i, j)$ is recorded as a violating position, and the absolute deviation $D(i, j) = |A[i][j] - S(i, j)|$ is tracked to identify $\max_{(i, j)} D(i, j)$.
+
+\textbf{2. Time Complexity Analysis:}
+The algorithm traverses $(n-2) \times (n-2) = (n-2)^2$ interior cells. For each cell, 4 array lookups, 3 additions, 1 comparison, and 1 subtraction are performed in constant $O(1)$ time:
+$$T(n) = (n-2)^2 \times O(1) = \mathbf{O(n^2)}$$
+Because global count and maximum absolute deviation must consider all interior violations, all interior cells must be evaluated, making Best, Average, and Worst-case time complexity identically $\mathbf{O(n^2)}$.
+
+\textbf{3. Auxiliary Space Complexity:}
+\begin{itemize}
+    \item \textbf{Additional Matrix Requirement:} An additional matrix is \textbf{NOT} required because checking stability is purely a read-only validation.
+    \item \textbf{Memory Usage:} The verification algorithm uses $\mathbf{O(1)}$ auxiliary space (or $O(V)$ to return the list of $V$ violating coordinate tuples).
+\end{itemize}
+
+\newpage
+
+% ==============================================================================
+% PROBLEM 5
+% ==============================================================================
+
+\begin{center}
+\textbf{Computer Science and Engineering Department, SVNIT, Surat}\\
+\textbf{M.Tech. I -- Semester I}\\
+\textbf{Design and Analysis of Algorithm (CSDS103)}\\
+\textbf{Lab Assignment 1 -- Problem 5}
+\end{center}
+
+\vspace{0.4cm}
+
+\textbf{Problem Statement}
+
+\textbf{Title: Nearly Ordered Employee Directory}
+
+An employee directory containing $n$ names is expected to be in lexicographical order, but due to a data-entry error, some names may have been placed incorrectly. Without sorting the complete array merely to determine ordering, design an algorithm to: (1) determine whether the list is already sorted, (2) identify all positions where the ordering is violated ($names[i] > names[i+1]$), and (3) determine whether exchanging ONLY TWO names can make the complete list sorted, reporting the two swap positions if possible.
+
+\vspace{0.3cm}
+
+\textbf{Code:}
+
+\begin{lstlisting}[language=Python]
+"""
+================================================================================
+Problem 5 Nearly Ordered Employee Directory
+================================================================================
+Problem Description:
+An employee directory containing n names is expected to be in lexicographical 
+order, but due to a data-entry error, some names may have been placed incorrectly.
+
+Given the list:
+1. Determine whether it is already sorted.
+2. Identify all positions where the ordering is violated (i.e. names[i] > names[i+1]).
+3. Determine whether exchanging ONLY TWO names can make the complete list sorted. 
+   If possible, report the two positions (indices).
+
+Constraint: Do NOT sort the complete array merely to determine ordering.
+
+COMPLEXITY ANALYSIS:
+--------------------------------------------------------------------------------
+1. Time Complexity:
+   - Best-Case Time Complexity:    O(n * k)
+   - Worst-Case Time Complexity:   O(n * k)
+     Scanning the array to detect inversions takes O(n * k) time. 
+     Simulating the swap and verifying order takes O(n * k) time.
+     Total Time = O(n * k), avoiding full array sorting O(n log n * k).
+
+2. Auxiliary Space Complexity:     O(1)
+   Only scalar index variables (inversion indices, swap candidate positions) 
+   are maintained.
+================================================================================
+"""
+
+from typing import List, Tuple, Optional
+
+
+def compare_strings(first_name: str, second_name: str) -> int:
+    """
+    Compares two strings lexicographically using standard case-sensitive ASCII values.
+    Returns -1 if first_name < second_name, 0 if equal, 1 if first_name > second_name.
+    """
+    first_string_len = len(first_name)
+    second_string_len = len(second_name)
+    min_len = min(first_string_len, second_string_len)
+
+    for character_index in range(min_len):
+        first_character = first_name[character_index]
+        second_character = second_name[character_index]
+        
+        if first_character != second_character:
+            return -1 if first_character < second_character else 1
+
+    if first_string_len < second_string_len:
+        return -1
+    elif first_string_len > second_string_len:
+        return 1
+    return 0
+
+
+def analyze_nearly_ordered_directory(
+    names: List[str]
+) -> Tuple[bool, List[int], bool, Optional[Tuple[int, int]]]:
+    """
+    Analyzes an employee directory to check if it is sorted, finds ordering 
+    violations, and checks if a single swap can fix the list.
+    
+    Returns:
+        (is_sorted, violation_indices, can_fix_with_single_swap, swap_positions)
+    """
+    total_names_count = len(names)
+    if total_names_count <= 1:
+        return True, [], True, None
+
+    # Step 1: Identify all inversion indices where names[i] > names[i + 1]
+    violation_indices = []
+    for i in range(total_names_count - 1):
+        if compare_strings(names[i], names[i + 1]) > 0:
+            violation_indices.append(i)
+
+    # If no violations exist, the list is already sorted
+    if len(violation_indices) == 0:
+        return True, [], True, None
+
+    # Step 2: Identify candidate swap positions (pos_1, pos_2)
+    # Case A: Exactly 1 inversion (adjacent elements swapped)
+    if len(violation_indices) == 1:
+        pos_1 = violation_indices[0]
+        pos_2 = violation_indices[0] + 1
+    # Case B: Exactly 2 inversions (non-adjacent elements swapped)
+    elif len(violation_indices) == 2:
+        pos_1 = violation_indices[0]
+        pos_2 = violation_indices[1] + 1
+    else:
+        # More than 2 inversions means a single swap cannot restore ordering
+        return False, violation_indices, False, None
+
+    # Step 3: Simulate single swap and verify if array becomes sorted
+    candidate_names = list(names)
+    candidate_names[pos_1], candidate_names[pos_2] = candidate_names[pos_2], candidate_names[pos_1]
+
+    # Check if candidate_names is now strictly sorted
+    is_restored = True
+    for i in range(total_names_count - 1):
+        if compare_strings(candidate_names[i], candidate_names[i + 1]) > 0:
+            is_restored = False
+            break
+
+    if is_restored:
+        return False, violation_indices, True, (pos_1, pos_2)
+    else:
+        return False, violation_indices, False, None
+
+
+if __name__ == "__main__":
+    test_cases = [
+        {
+            "description": "Already Sorted Directory",
+            "names": ["Amit", "Karan", "Neha", "Priya", "Rahul"]
+        },
+        {
+            "description": "Single Non-Adjacent Violation (Rahul and Priya placed incorrectly)",
+            "names": ["Amit", "Karan", "Neha", "Rahul", "Priya"]
+        },
+        {
+            "description": "Single Violation (Karan and Neha swapped)",
+            "names": ["Amit", "Neha", "Karan", "Rahul", "Priya"]
+        },
+        {
+            "description": "Multiple Violations (Cannot be fixed by 1 swap)",
+            "names": ["Rahul", "Priya", "Neha", "Karan", "Amit"]
+        }
+    ]
+
+    for test in test_cases:
+        print(f"Test Case: {test['description']}")
+        print(f"Names List: {test['names']}")
+        
+        is_sorted, violations, can_fix, swap_pos = analyze_nearly_ordered_directory(test["names"])
+        
+        if is_sorted:
+            print("Status: Directory is ALREADY SORTED.")
+        else:
+            print("Status: Directory CONTAINS ORDERING VIOLATION(S).")
+            print(f"  - Violation Indices (i where names[i] > names[i+1]): {violations}")
+            print(f"  - Violation Pairs:")
+            for v_idx in violations:
+                print(f"     * Index {v_idx} ('{test['names'][v_idx]}') > Index {v_idx+1} ('{test['names'][v_idx+1]}')")
+                
+            if can_fix and swap_pos:
+                print(f"  - Single Swap Possible: YES")
+                print(f"  - Exchanging positions {swap_pos[0]} ('{test['names'][swap_pos[0]]}') and {swap_pos[1]} ('{test['names'][swap_pos[1]]}') restores sorted order.")
+            else:
+                print(f"  - Single Swap Possible: NO (Multiple swaps required).")
+        print()
+\end{lstlisting}
+
+\newpage
+
+\textbf{Output:}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{images/nearly_ordered_directory.png}
+\caption{Execution Output for Problem 5: Nearly Ordered Directory Analysis}
+\end{figure}
+
+\newpage
+
+\textbf{Analysis:}
+
+\textbf{1. Inversion Classification and Single-Swap Feasibility:}
+Let $V$ be the list of inversion indices where $\text{names}[i] > \text{names}[i+1]$.
+\begin{itemize}
+    \item \textbf{Case 1 ($|V| = 0$):} No inversions exist $\implies$ The array is already sorted.
+    \item \textbf{Case 2 ($|V| = 1$):} Two adjacent elements were exchanged $\implies$ Candidate swap positions are $p_1 = V[0]$ and $p_2 = V[0] + 1$.
+    \item \textbf{Case 3 ($|V| = 2$):} Two non-adjacent elements were exchanged $\implies$ Candidate swap positions are $p_1 = V[0]$ and $p_2 = V[1] + 1$.
+    \item \textbf{Case 4 ($|V| > 2$):} Exchanging only two elements can fix at most two local inversions. More than 2 inversions cannot be restored in a single swap.
+\end{itemize}
+
+\textbf{2. Time Complexity Analysis:}
+\begin{itemize}
+    \item \textbf{Inversion Detection Phase:} Scans $n-1$ adjacent string pairs in $O(n \cdot K)$ time.
+    \item \textbf{Verification Phase:} Simulates the single candidate swap and checks sorted order in $O(n \cdot K)$ time.
+    \item \textbf{Total Time Complexity:} $T(n) = O(n \cdot K) + O(n \cdot K) = \mathbf{O(n \cdot K)}$. This strictly avoids the $O(n \log n \cdot K)$ cost of sorting the entire array merely to test ordering.
+\end{itemize}
+
+\textbf{3. Auxiliary Space Complexity:}
+Only scalar index variables are maintained, yielding $\mathbf{O(1)}$ auxiliary space complexity.
+
+\newpage
+
+% ==============================================================================
+% PROBLEM 6
+% ==============================================================================
+
+\begin{center}
+\textbf{Computer Science and Engineering Department, SVNIT, Surat}\\
+\textbf{M.Tech. I -- Semester I}\\
+\textbf{Design and Analysis of Algorithm (CSDS103)}\\
+\textbf{Lab Assignment 1 -- Problem 6}
+\end{center}
+
+\vspace{0.4cm}
+
+\textbf{Problem Statement}
+
+\textbf{Title: Dominant Element}
+
+Given an integer array of size $n$, determine whether there exists a dominant element—an element that occurs more than half of the time ($> n / 2$). Develop two solutions: (1) Repeated Counting / Comparison (Brute Force), and (2) Boyer-Moore Majority Vote Algorithm to identify the dominant element in $O(n)$ time without using additional storage ($O(1)$ auxiliary space).
+
+\vspace{0.3cm}
+
+\textbf{Code:}
+
+\begin{lstlisting}[language=Python]
+"""
+================================================================================
+Problem 6 Dominant Element
+================================================================================
+Problem Description:
+Given an integer array of size n, determine whether there exists an element that 
+occurs more than half of the time (> n / 2).
+
+Example:
+Input: [2, 2, 1, 2, 3, 2, 2] (n = 7)
+Dominant Element: 2 (Occurs 5 times, 5 > 3.5)
+
+Develop two different solutions:
+1. Solution 1: Repeated Counting / Comparison (Brute Force).
+2. Solution 2: Boyer-Moore Majority Vote Algorithm (Optimal - reduces repeated work).
+
+COMPLEXITY COMPARISON:
+--------------------------------------------------------------------------------
+Solution 1 (Repeated Counting / Brute Force):
+- Best-Case Time:    O(n)   (When first element is dominant)
+- Average-Case Time: O(n^2)
+- Worst-Case Time:   O(n^2)
+- Auxiliary Space:   O(1)
+
+Solution 2 (Boyer-Moore Majority Vote Algorithm):
+- Best-Case Time:    O(n)
+- Average-Case Time: O(n)
+- Worst-Case Time:   O(n)
+- Auxiliary Space:   O(1)  (No additional storage required!)
+================================================================================
+"""
+
+from typing import List, Tuple, Optional
+
+
+def find_dominant_element_repeated_counting(numbers: List[int]) -> Tuple[bool, Optional[int], int]:
+    """
+    Solution 1: Repeated counting / brute force.
+    For each element, counts its frequency across the entire array.
+    
+    Time Complexity:  O(n^2)
+    Auxiliary Space:  O(1)
+    """
+    array_size = len(numbers)
+    if array_size == 0:
+        return False, None, 0
+
+    majority_threshold = array_size // 2
+
+    for current_index in range(array_size):
+        candidate_val = numbers[current_index]
+        occurrence_count = 0
+
+        # Count frequency of candidate_val across the entire array
+        for scan_index in range(array_size):
+            if numbers[scan_index] == candidate_val:
+                occurrence_count += 1
+
+        # Check if candidate_val occurs more than n / 2 times
+        if occurrence_count > majority_threshold:
+            return True, candidate_val, occurrence_count
+
+    return False, None, 0
+
+
+def find_dominant_element_boyer_moore(numbers: List[int]) -> Tuple[bool, Optional[int], int]:
+    """
+    Solution 2: Boyer-Moore Majority Vote Algorithm.
+    Finds dominant element in linear O(n) time and O(1) auxiliary space without 
+    using additional storage.
+    
+    Time Complexity:  O(n)
+    Auxiliary Space:  O(1)
+    """
+    array_size = len(numbers)
+    if array_size == 0:
+        return False, None, 0
+
+    # Phase 1: Find Majority Candidate
+    candidate = None
+    vote_counter = 0
+
+    for num in numbers:
+        if vote_counter == 0:
+            candidate = num
+            vote_counter = 1
+        elif num == candidate:
+            vote_counter += 1
+        else:
+            vote_counter -= 1
+
+    # Phase 2: Verify Candidate
+    actual_occurrence_count = 0
+    for num in numbers:
+        if num == candidate:
+            actual_occurrence_count += 1
+
+    majority_threshold = array_size // 2
+    if actual_occurrence_count > majority_threshold:
+        return True, candidate, actual_occurrence_count
+
+    return False, None, 0
+
+
+if __name__ == "__main__":
+    test_cases = [
+        {
+            "description": "Standard Assignment Example",
+            "numbers": [2, 2, 1, 2, 3, 2, 2]
+        },
+        {
+            "description": "No Dominant Element",
+            "numbers": [1, 2, 3, 4, 5, 6]
+        },
+        {
+            "description": "Dominant Element at Boundary (> n/2 exact)",
+            "numbers": [7, 7, 7, 1, 2]
+        },
+        {
+            "description": "Single Element Array",
+            "numbers": [42]
+        },
+        {
+            "description": "All Elements Identical",
+            "numbers": [9, 9, 9, 9, 9]
+        }
+    ]
+
+    for test in test_cases:
+        print(f"Test Case: {test['description']}")
+        print(f"Array: {test['numbers']}")
+        
+        has_dom_1, val_1, count_1 = find_dominant_element_repeated_counting(test["numbers"])
+        has_dom_2, val_2, count_2 = find_dominant_element_boyer_moore(test["numbers"])
+
+        if has_dom_1:
+            print(f"Solution 1 (Brute Force O(n^2)): Dominant Element = {val_1} (Occurs {count_1} times)")
+        else:
+            print(f"Solution 1 (Brute Force O(n^2)): No dominant element exists")
+
+        if has_dom_2:
+            print(f"Solution 2 (Boyer-Moore O(n)):   Dominant Element = {val_2} (Occurs {count_2} times)")
+        else:
+            print(f"Solution 2 (Boyer-Moore O(n)):   No dominant element exists")
+            
+        assert has_dom_1 == has_dom_2 and val_1 == val_2, "Mismatch between solutions!"
+        print()
+\end{lstlisting}
+
+\newpage
+
+\textbf{Output:}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{images/dominant_element.png}
+\caption{Execution Output for Problem 6: Dominant Element Identification}
+\end{figure}
+
+\newpage
+
+\textbf{Analysis:}
+
+\textbf{1. Solution 1 (Brute Force Repeated Counting):}
+\begin{itemize}
+    \item \textbf{Time Complexity:} For each element, an inner loop counts its occurrences across all $n$ positions. Best-case time is $O(n)$ (when the first element is dominant), while Average and Worst-case time complexity is $\mathbf{O(n^2)}$.
+    \item \textbf{Auxiliary Space Complexity:} $\mathbf{O(1)}$.
+\end{itemize}
+
+\textbf{2. Solution 2 (Boyer-Moore Majority Vote Algorithm):}
+\begin{itemize}
+    \item \textbf{Phase 1 (Candidate Selection):} Traverses the array maintaining a \texttt{candidate} and a \texttt{vote\_counter}. Equal elements increment the counter; distinct elements decrement it. This runs in exactly $n$ iterations ($O(n)$).
+    \item \textbf{Phase 2 (Candidate Verification):} Traverses the array a second time to count the true occurrences of the candidate and checks if $\text{count} > \lfloor n / 2 \rfloor$ ($O(n)$).
+    \item \textbf{Time Complexity:} $T(n) = n + n = \mathbf{O(n)}$ for all cases (Best, Average, Worst).
+    \item \textbf{Auxiliary Space Complexity:} $\mathbf{O(1)}$ auxiliary space without requiring hash tables or extra arrays.
+\end{itemize}
+
+\textbf{3. Mathematical Proof of Correctness (Pairwise Elimination):}
+If an element $E$ appears $c > n/2$ times, the sum of occurrences of all other elements combined is $n - c < c$. Whenever a pair of distinct elements is discarded by decrementing the counter, at most one instance of $E$ is eliminated with one non-$E$ element. Hence, $E$ is guaranteed to survive as the final candidate with positive net balance $c - (n - c) = 2c - n \ge 1$.
+
+\end{document}

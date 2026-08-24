@@ -151,7 +151,8 @@ def find_duplicates_without_sorting(employee_names: List[str]) -> Dict[str, int]
 
 
 if __name__ == "__main__":
-    employee_names = ["John", "alice", "Bob", "John", "Alice", "Charlie", "bob", "David"]
+    # employee_names = ["John", "alice", "Bob", "John", "Alice", "Charlie", "bob", "David"]
+    employee_names = ["Aarthi", "Aarav", "Jay", "isha", "aarthi"]
 
     sorted_employee_names = merge_sort_names(employee_names)
     duplicate_names_map = find_duplicates_after_sorting(sorted_employee_names)
