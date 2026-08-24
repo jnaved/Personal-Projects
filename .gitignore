@@ -221,3 +221,7 @@ settings.json
 *.pdf
 *.zip
 images
+20_newsgroups
+*.csv
+*.exe
+*.out
