@@ -1,0 +1,159 @@
+\documentclass[12pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{newtxtext,newtxmath} % Times-style font
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{booktabs}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+
+% Keep entire document at 12 pt
+\AtBeginDocument{
+    \fontsize{12pt}{14pt}\selectfont
+}
+
+% ------------------------------------------------
+% Header
+% ------------------------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Name: \underline{Shaik Jnaved}}
+\fancyhead[R]{Enrollment No.: \underline{P26DS001}}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{15pt}
+
+% ------------------------------------------------
+% Code formatting
+% ------------------------------------------------
+\lstset{
+    language=C,
+    basicstyle=\ttfamily\fontsize{8.5pt}{10.5pt}\selectfont,
+    keywordstyle=\color{blue}\bfseries,
+    stringstyle=\color{teal},
+    commentstyle=\color{gray}\itshape,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=6pt,
+    breaklines=true,
+    frame=single,
+    columns=fullflexible,
+    keepspaces=true,
+    showstringspaces=false,
+    tabsize=4
+}
+
+\begin{document}
+
+% ------------------------------------------------
+% TITLE
+% ------------------------------------------------
+\begin{center}
+\textbf{Computer Science and Engineering Department, SVNIT, Surat}\\
+\textbf{M.Tech. I -- Semester I}\\
+\textbf{Computer Vision and Image Processing}\\
+\textbf{Lab Assignment 2: Netpbm Format Identification, Header Parsing, Dynamic Size Calculation \& Integrity Verification}
+\end{center}
+
+\vspace{0.4cm}
+
+\textbf{Problem Statement}
+
+\begin{enumerate}
+    \item \textbf{Identify the Image Format:} Open a PGM/PPM file in binary mode and read its header. Identify and display the magic number (\texttt{P5} for PGM binary or \texttt{P6} for PPM binary). Explain what the magic number represents.
+    \item \textbf{Read the Header Fields:} Extract image width, height, and maximum intensity value (\texttt{MaxVal}). Handle whitespace and comment lines beginning with \texttt{\#} anywhere in the header.
+    \item \textbf{Determine the Number of Pixels:} Calculate total pixels = $\text{Width} \times \text{Height}$.
+    \item \textbf{Determine Bytes Per Pixel:} For PGM, determine sample size ($1$ or $2$ bytes based on $\text{MaxVal} \le 255$). For PPM, account for $3$ color components ($R, G, B$) and determine total bytes per pixel.
+    \item \textbf{Calculate Expected Image-Data Size:} Compute expected byte payload using header fields alone. Display the calculation step-by-step.
+    \item \textbf{Read Image Data:} Read exactly the calculated number of bytes into dynamically allocated memory. Report bytes successfully read.
+    \item \textbf{Verify the File:} Compare expected payload size with actual data available in the file ($\text{File Size} - \text{Header Offset}$).
+    \item \textbf{Analyse First Few Pixels:} Display first 10 pixel values (scalar for PGM, RGB triplets for PPM, and explain 16-bit big-endian representation).
+    \item \textbf{Extension vs. Format:} Test at least one PGM and PPM file. Check whether file extension alone is sufficient to identify format. Justify using header magic numbers.
+    \item \textbf{Critical-Thinking Component:} Consider an image with $W=640, H=480$. Calculate expected data size for PGM and PPM when $\text{MaxVal}=255$ and $\text{MaxVal}=65535$. Explain why byte count changes while dimensions remain constant.
+\end{enumerate}
+
+\vspace{0.3cm}
+\newpage
+
+\textbf{Source Code (C Language):}
+
+\lstinputlisting{../../lab_2/main.c}
+
+\newpage
+
+\textbf{Execution Output \& Screenshots:}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.96\textwidth]{images/lab_2_output_part1.png}
+\caption{Terminal Output -- Section 1: PGM Grayscale Image Parsing, Expected Size Calculation \& Verification}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.96\textwidth]{images/lab_2_output_part2.png}
+\caption{Terminal Output -- Section 2: PPM Truecolor RGB Image Parsing, RGB Triplets \& Verification}
+\end{figure}
+
+\newpage
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.96\textwidth]{images/lab_2_output_part3.png}
+\caption{Terminal Output -- Section 3: File Extension vs Header Magic Number Investigation}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.96\textwidth]{images/lab_2_output_part4.png}
+\caption{Terminal Output -- Section 4: Critical-Thinking $640 \times 480$ Analytical Resolution Calculations}
+\end{figure}
+
+\newpage
+
+\textbf{Theoretical \& Mathematical Analysis:}
+
+\textbf{1. Expected Raster Data Size Formulation:}
+$$\text{Bytes Per Sample} = \begin{cases} 1 \text{ byte}, & \text{if } \text{MaxVal} \le 255 \\ 2 \text{ bytes}, & \text{if } \text{MaxVal} > 255 \end{cases}$$
+$$\text{Expected Payload Size} = \text{Width} \times \text{Height} \times \text{Channels} \times \text{BytesPerSample}$$
+
+\textbf{2. Verification Summary for Test Images:}
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}llllll@{}}
+\toprule
+\textbf{File Name} & \textbf{Magic} & \textbf{Dimensions ($W \times H$)} & \textbf{Header Size} & \textbf{Expected Payload} & \textbf{Verification Status} \\ \midrule
+\texttt{image\_1.pgm} & \texttt{P5} & $7525 \times 5729$ (1 Chan) & $17\text{ B}$ & $43,110,725\text{ B}$ & \textbf{100\% Verified} \\
+\texttt{image\_1.ppm} & \texttt{P6} & $7525 \times 5729$ (3 Chan) & $17\text{ B}$ & $129,332,175\text{ B}$ & \textbf{100\% Verified} \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{3. Critical-Thinking Evaluation ($640 \times 480$ Resolution, $N = 307,200\text{ pixels}$):}
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}llllll@{}}
+\toprule
+\textbf{Format} & \textbf{MaxVal (Bit Depth)} & \textbf{Bytes/Pixel} & \textbf{Calculation Formula} & \textbf{Total Size (Bytes)} & \textbf{Size in KB} \\ \midrule
+PGM (Gray) & $255$ ($8$-bit) & $1\text{ byte}$ & $640 \times 480 \times 1 \times 1$ & $307,200\text{ bytes}$ & $300.00\text{ KB}$ \\
+PPM (RGB) & $255$ ($8$-bit) & $3\text{ bytes}$ & $640 \times 480 \times 3 \times 1$ & $921,600\text{ bytes}$ & $900.00\text{ KB}$ \\
+PGM (Gray) & $65535$ ($16$-bit) & $2\text{ bytes}$ & $640 \times 480 \times 1 \times 2$ & $614,400\text{ bytes}$ & $600.00\text{ KB}$ \\
+PPM (RGB) & $65535$ ($16$-bit) & $6\text{ bytes}$ & $640 \times 480 \times 3 \times 2$ & $1,843,200\text{ bytes}$ & $1,800.00\text{ KB}$ \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{4. Why the Byte Count Changes Despite Constant Dimensions:}
+\begin{itemize}
+    \item \textbf{Spatial vs Radiometric Resolution:} The spatial resolution ($W \times H = 307,200$ sample points) is fixed, but the \textbf{radiometric resolution} (quantization precision per sample point) is altered.
+    \item \textbf{Information Capacity Doubling:} $\text{MaxVal}=255$ requires $8$ bits ($2^8 = 256$ discrete levels), whereas $\text{MaxVal}=65535$ requires $16$ bits ($2^{16} = 65,536$ levels). Storing $16$ bits per sample requires exactly $2$ bytes, causing the total payload to double ($100\%$ expansion).
+    \item \textbf{Color Dimensionality:} PPM stores 3 discrete color components ($R, G, B$) per pixel, making PPM exactly $3\times$ larger than PGM at equivalent bit depths.
+\end{itemize}
+
+\end{document}

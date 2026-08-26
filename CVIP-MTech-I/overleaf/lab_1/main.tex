@@ -1,0 +1,152 @@
+\documentclass[12pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{newtxtext,newtxmath} % Times-style font
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{booktabs}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+
+% Keep entire document at 12 pt
+\AtBeginDocument{
+    \fontsize{12pt}{14pt}\selectfont
+}
+
+% ------------------------------------------------
+% Header
+% ------------------------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Name: \underline{Shaik Jnaved}}
+\fancyhead[R]{Enrollment No.: \underline{P26DS001}}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{15pt}
+
+% ------------------------------------------------
+% Code formatting
+% ------------------------------------------------
+\lstset{
+    language=C,
+    basicstyle=\ttfamily\fontsize{8.5pt}{10.5pt}\selectfont,
+    keywordstyle=\color{blue}\bfseries,
+    stringstyle=\color{teal},
+    commentstyle=\color{gray}\itshape,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=6pt,
+    breaklines=true,
+    frame=single,
+    columns=fullflexible,
+    keepspaces=true,
+    showstringspaces=false,
+    tabsize=4
+}
+
+\begin{document}
+
+% ------------------------------------------------
+% TITLE
+% ------------------------------------------------
+\begin{center}
+\textbf{Computer Science and Engineering Department, SVNIT, Surat}\\
+\textbf{M.Tech. I -- Semester I}\\
+\textbf{Computer Vision and Image Processing}\\
+\textbf{Lab Assignment 1: Grayscale Image Analysis, ROI Extraction, Brightening, and Statistical Investigation}
+\end{center}
+
+\vspace{0.4cm}
+
+\textbf{Problem Statement}
+
+\begin{enumerate}
+    \item \textbf{Grayscale Image Analysis \& Numerical Comparison:} Read two grayscale images in PGM format (P5 Binary / P2 ASCII). Compute the statistical parameters: minimum intensity, maximum intensity, dynamic range, mean intensity ($\mu$), standard deviation ($\sigma$), 16-bin intensity histogram, and intensity tier classification (Dark: $[0-85]$, Mid: $[86-170]$, Bright: $[171-255]$). Compare the images side-by-side.
+    \item \textbf{Region of Interest (ROI) Analysis:} Select and extract a sub-region from each image having significantly different intensity from the rest of the image. Compute its localized statistical metrics and analyze its behavior relative to the parent image.
+    \item \textbf{Brightness Modification \& Shift Analysis:} Modify the pixel values of an image to make it brighter without altering spatial dimensions ($\Delta = +50$ with $[0, 255]$ clamping). Analyze the resulting shifts in pixel statistics and histogram distribution.
+    \item \textbf{Equal Mean Intensity Investigation:} Investigate and prove mathematically whether two visually different images can have the same average intensity. Demonstrate using synthetic test patterns.
+    \item \textbf{Processing Suitability:} Determine which image is more suitable for operations such as global thresholding and justify the answer based on obtained statistics and histogram profiles.
+\end{enumerate}
+
+\vspace{0.3cm}
+\newpage
+
+\textbf{Source Code (C Language):}
+
+\lstinputlisting{../../lab_1/main.c}
+
+\newpage
+
+\textbf{Execution Output \& Screenshots:}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.96\textwidth]{images/lab_1_output_part1.png}
+\caption{Terminal Output -- Part 1: Global Grayscale Image Analysis \& Numerical Comparison}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.96\textwidth]{images/lab_1_output_part2.png}
+\caption{Terminal Output -- Part 2: Localized ROI Search, Extraction \& Side-by-Side Comparison}
+\end{figure}
+
+\newpage
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.96\textwidth]{images/lab_1_output_part3.png}
+\caption{Terminal Output -- Part 3: Brightening Transformation ($\Delta = +50$) \& Histogram Shifts}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.96\textwidth]{images/lab_1_output_part4.png}
+\caption{Terminal Output -- Part 4: Equal Mean Intensity ($\mu \approx 128.0$) Investigation Across 4 Distinct Patterns}
+\end{figure}
+
+\newpage
+
+\textbf{Theoretical \& Mathematical Analysis:}
+
+\textbf{1. Statistical Metrics Formulation:}
+Let an image $I$ of size $M \times N$ ($K = M \cdot N$ total pixels) have pixel intensities $p(x, y) \in [0, 255]$.
+\begin{itemize}
+    \item \textbf{Dynamic Range:} $\text{DR} = I_{\max} - I_{\min}$.
+    \item \textbf{Mean Intensity (1st Moment):}
+    $$\mu = \frac{1}{K} \sum_{x=0}^{M-1} \sum_{y=0}^{N-1} p(x, y)$$
+    \item \textbf{Standard Deviation / Contrast (2nd Central Moment):}
+    $$\sigma = \sqrt{\frac{1}{K} \sum_{x=0}^{M-1} \sum_{y=0}^{N-1} (p(x, y) - \mu)^2}$$
+\end{itemize}
+
+\textbf{2. Numerical Comparison (Image 1 vs. Image 2):}
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Parameter} & \textbf{Image 1 (\texttt{image\_1.pgm})} & \textbf{Image 2 (\texttt{image\_2.pgm})} \\ \midrule
+Dimensions ($W \times H$) & $7525 \times 5729$ (43.11 MP) & $3840 \times 5760$ (22.12 MP) \\
+Storage Format & PGM P5 (Binary) & PGM P2 (ASCII) \\
+Min / Max Intensity & $0$ / $255$ & $46$ / $232$ \\
+Dynamic Range & $255$ (Full Span) & $186$ (Compressed) \\
+Mean Intensity ($\mu$) & $103.88$ & $102.20$ \\
+Standard Deviation ($\sigma$) & $\mathbf{74.98}$ (High Contrast) & $\mathbf{40.46}$ (Low/Moderate Contrast) \\
+Dark Pixels $[0 - 85]$ & $51.42\%$ & $44.50\%$ \\
+Mid Pixels $[86 - 170]$ & $20.75\%$ & $48.50\%$ (Congested) \\
+Bright Pixels $[171 - 255]$ & $27.83\%$ & $7.00\%$ \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{3. Thresholding Suitability Justification:}
+\textbf{Winner: Image 1}. Image 1 exhibits a pronounced \textbf{bimodal distribution} with distinct peaks in dark shadows ($51.42\%$) and bright highlights ($27.83\%$), separated by a deep intensity valley at $[112 - 159]$ ($\sim 3.2\%$). Conversely, Image 2 is heavily congested in mid-tones ($48.50\%$) with no bimodal valley, causing severe misclassification under global thresholding.
+
+\textbf{4. Mathematical Proof of Equal Mean with Divergent Visual Appearance:}
+The equation $\sum_{i=0}^{K-1} p_i = K \cdot \mu_0$ defines a $(K-1)$-dimensional hyperplane in $\mathbb{R}^K$. Mean intensity $\mu$ is a 0th-order statistic that completely discards spatial coordinates $(x, y)$ and higher-order moments ($\sigma$). As demonstrated by our 4 synthetic test images, a uniform gray image ($\sigma=0$), a binary checkerboard ($\sigma=127$), a linear gradient ($\sigma=73.5$), and concentric circles ($\sigma=84.6$) all share $\mu = 128.00$ while exhibiting radically different visual geometry.
+
+\end{document}

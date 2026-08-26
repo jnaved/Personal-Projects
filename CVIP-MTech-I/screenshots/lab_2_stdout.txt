@@ -1,0 +1,226 @@
+﻿================================================================================
+         NETPBM FORMAT PARSER, VERIFIER & CRITICAL ANALYSIS ENGINE (C)          
+================================================================================
+
+################################################################################
+        SECTION 1: PROCESSING PGM GRAYSCALE IMAGE (lab_2/images/image_1.pgm)                          
+################################################################################
+
+========================================================================================
+                        NETPBM IMAGE ANALYSIS & VERIFICATION REPORT                     
+========================================================================================
+  [1] File Identification & Header Ground Truth:
+      * File Path               : lab_2/images/image_1.pgm
+      * Magic Number            : P5
+  [Netpbm Magic Number Explanation]:
+    * Magic Identifier: 'P5' represents Portable Graymap (PGM) in RAW BINARY format.
+    * Color Model     : Grayscale (1 component / channel per pixel: Intensity).
+    * Encoding Mode   : Uncompressed binary bytes for high storage efficiency.
+
+  [2] Geometric Dimensions & Header Fields:
+      * Image Width (W)         : 7525 pixels
+      * Image Height (H)        : 5729 pixels
+      * Max Intensity (MaxVal)  : 255
+      * Total Pixels (W x H)    : 43110725 pixels (43.11 Megapixels)
+
+  [3] Pixel Storage Architecture & Precision:
+      * Color Channels          : 1 (1 Grayscale Channel)
+      * Bytes Per Sample        : 1 byte(s) [MaxVal <= 255 -> 8-bit precision]
+      * Total Bytes Per Pixel   : 1 byte(s)/pixel (Channels: 1 x BytesPerSample: 1)
+
+  [4] Mathematical Calculation of Expected Image-Data Size:
+      * Formula: Expected Size = Width * Height * Channels * BytesPerSample
+      * Step-by-Step Arithmetic:
+            = (7525 pixels) * (5729 pixels) * (1 channels) * (1 byte)
+            = 43110725 pixels * 1 bytes/pixel
+            = 43110725 bytes (41.11 MB / 42100.32 KB)
+
+  [5] File Verification & Structural Integrity Analysis:
+      * Total File Size on Disk : 43110742 bytes
+      * Header Offset / Length  : 17 bytes
+      * Actual Data In File     : 43110725 bytes (Total Size - Header Length)
+      * Bytes Read into Memory  : 43110725 bytes
+      * INTEGRITY STATUS        : [VERIFIED PERFECT - 100% MATCH]
+        -> Expected raster payload (43110725 bytes) EXACTLY matches actual available data.
+========================================================================================
+
+========================================================================================
+                        INITIAL PIXEL VALUE ANALYSIS (FIRST 10 PIXELS)                  
+                        File: lab_2/images/image_1.pgm (Format: P5)
+========================================================================================
+ Index | Pixel Coordinate (X, Y) | Intensity Sample Value | Normalized [0.0 - 1.0]
+-------+-------------------------+------------------------+-----------------------
+  #00  |   (   0,    0)           |  172 / 255            |       0.6745
+  #01  |   (   1,    0)           |  143 / 255            |       0.5608
+  #02  |   (   2,    0)           |   93 / 255            |       0.3647
+  #03  |   (   3,    0)           |   91 / 255            |       0.3569
+  #04  |   (   4,    0)           |  111 / 255            |       0.4353
+  #05  |   (   5,    0)           |  139 / 255            |       0.5451
+  #06  |   (   6,    0)           |  175 / 255            |       0.6863
+  #07  |   (   7,    0)           |  216 / 255            |       0.8471
+  #08  |   (   8,    0)           |  235 / 255            |       0.9216
+  #09  |   (   9,    0)           |  243 / 255            |       0.9529
+
+  [16-Bit Sample Representation Explanation (MaxVal > 255)]:
+    * When MaxVal > 255 (e.g. MaxVal = 65535), each intensity sample requires 16 bits (2 bytes).
+    * Netpbm specifies Network Byte Order (Big-Endian):
+          Sample_Value = (Most_Significant_Byte << 8) | Least_Significant_Byte
+    * For PPM, each pixel consists of 3 consecutive 16-bit samples (6 bytes total: R_msb, R_lsb, G_msb, G_lsb, B_msb, B_lsb).
+========================================================================================
+
+################################################################################
+        SECTION 2: PROCESSING PPM TRUECOLOR RGB IMAGE (lab_2/images/image_1.ppm)                      
+################################################################################
+
+========================================================================================
+                        NETPBM IMAGE ANALYSIS & VERIFICATION REPORT                     
+========================================================================================
+  [1] File Identification & Header Ground Truth:
+      * File Path               : lab_2/images/image_1.ppm
+      * Magic Number            : P6
+  [Netpbm Magic Number Explanation]:
+    * Magic Identifier: 'P6' represents Portable Pixmap (PPM) in RAW BINARY format.
+    * Color Model     : 24-bit Truecolor RGB (3 components / channels per pixel: Red, Green, Blue).
+    * Encoding Mode   : Uncompressed binary bytes (RGBRGB... sequence).
+
+  [2] Geometric Dimensions & Header Fields:
+      * Image Width (W)         : 7525 pixels
+      * Image Height (H)        : 5729 pixels
+      * Max Intensity (MaxVal)  : 255
+      * Total Pixels (W x H)    : 43110725 pixels (43.11 Megapixels)
+
+  [3] Pixel Storage Architecture & Precision:
+      * Color Channels          : 3 (3 Channels: Red, Green, Blue)
+      * Bytes Per Sample        : 1 byte(s) [MaxVal <= 255 -> 8-bit precision]
+      * Total Bytes Per Pixel   : 3 byte(s)/pixel (Channels: 3 x BytesPerSample: 1)
+
+  [4] Mathematical Calculation of Expected Image-Data Size:
+      * Formula: Expected Size = Width * Height * Channels * BytesPerSample
+      * Step-by-Step Arithmetic:
+            = (7525 pixels) * (5729 pixels) * (3 channels) * (1 byte)
+            = 43110725 pixels * 3 bytes/pixel
+            = 129332175 bytes (123.34 MB / 126300.95 KB)
+
+  [5] File Verification & Structural Integrity Analysis:
+      * Total File Size on Disk : 129332192 bytes
+      * Header Offset / Length  : 17 bytes
+      * Actual Data In File     : 129332175 bytes (Total Size - Header Length)
+      * Bytes Read into Memory  : 129332175 bytes
+      * INTEGRITY STATUS        : [VERIFIED PERFECT - 100% MATCH]
+        -> Expected raster payload (129332175 bytes) EXACTLY matches actual available data.
+========================================================================================
+
+========================================================================================
+                        INITIAL PIXEL VALUE ANALYSIS (FIRST 10 PIXELS)                  
+                        File: lab_2/images/image_1.ppm (Format: P6)
+========================================================================================
+ Index | Pixel (X, Y) |   Red (R)   |  Green (G)  |   Blue (B)  | Formatted RGB Triplet
+-------+--------------+-------------+-------------+-------------+----------------------
+  #00  |  (   0,    0) |     172     |     172     |     172     | RGB(172, 172, 172)
+  #01  |  (   1,    0) |     143     |     143     |     143     | RGB(143, 143, 143)
+  #02  |  (   2,    0) |      93     |      93     |      93     | RGB( 93,  93,  93)
+  #03  |  (   3,    0) |      91     |      91     |      91     | RGB( 91,  91,  91)
+  #04  |  (   4,    0) |     111     |     111     |     111     | RGB(111, 111, 111)
+  #05  |  (   5,    0) |     139     |     139     |     139     | RGB(139, 139, 139)
+  #06  |  (   6,    0) |     175     |     175     |     175     | RGB(175, 175, 175)
+  #07  |  (   7,    0) |     216     |     216     |     216     | RGB(216, 216, 216)
+  #08  |  (   8,    0) |     235     |     235     |     235     | RGB(235, 235, 235)
+  #09  |  (   9,    0) |     243     |     243     |     243     | RGB(243, 243, 243)
+
+  [16-Bit Sample Representation Explanation (MaxVal > 255)]:
+    * When MaxVal > 255 (e.g. MaxVal = 65535), each intensity sample requires 16 bits (2 bytes).
+    * Netpbm specifies Network Byte Order (Big-Endian):
+          Sample_Value = (Most_Significant_Byte << 8) | Least_Significant_Byte
+    * For PPM, each pixel consists of 3 consecutive 16-bit samples (6 bytes total: R_msb, R_lsb, G_msb, G_lsb, B_msb, B_lsb).
+========================================================================================
+
+
+################################################################################
+        INVESTIGATION: FILE EXTENSION VS FILE HEADER GROUND TRUTH               
+################################################################################
+
+========================================================================================
+                       EXTENSION VS HEADER FORMAT COMPARISON TABLE                      
+========================================================================================
+ Test Case Image | File Extension | Header Magic | Identified Format   | Channels / Pixel
+-----------------+----------------+--------------+---------------------+-----------------
+ File 1 (PGM)    | .pgm           | P5           | PGM Binary Raster   | 1 Channel (Grayscale)
+ File 2 (PPM)    | .ppm           | P6           | PPM Binary Raster   | 3 Channels (RGB Color)
+========================================================================================
+
+[Comprehensive Justification & Technical Answer]:
+  Question: Is the file extension alone sufficient to identify the image format?
+  Answer  : NO. The file extension is NOT sufficient.
+
+  Technical Justification:
+    1. Extensions are Superficial OS Conventions:
+       The filename extension (.pgm, .ppm, .bin) is merely an operating system naming convention
+       used for shell icon associations. A user or program can freely rename 'image.ppm' to 'image.pgm'
+       or 'image.dat' without altering the internal byte structure of the file.
+    2. The Header Magic Number is Authoritative Ground Truth:
+       Computer Vision algorithms and robust image loaders MUST read the initial bytes (magic number)
+       of the file stream. The magic number ('P5', 'P6', 'P2', 'P3') definitively dictates:
+         - Whether the raster is Grayscale (1 channel) or Truecolor (3 channels).
+         - Whether encoding is raw binary or ASCII text.
+         - How many bytes per pixel must be read to prevent memory corruption.
+========================================================================================
+
+
+################################################################################
+                    CRITICAL-THINKING ANALYTICAL COMPONENT                      
+################################################################################
+ Base Parameters: Image Dimensions = 640 x 480 | Total Pixels (N) = 307200 pixels
+
+====================================================================================================
+ Case (i): Standard Dynamic Range (MaxVal = 255 -> 8-Bit Quantization Depth, 1 Byte/Sample)
+====================================================================================================
+  (a) PGM Format (Grayscale, 1 Channel):
+      * Formula       : Expected Bytes = Width * Height * Channels * BytesPerSample
+      * Calculation   : 640 * 480 * 1 * 1 byte
+      * Payload Size  : 307200 bytes (300.00 KB / 0.2930 MB)
+  (b) PPM Format (Truecolor RGB, 3 Channels):
+      * Formula       : Expected Bytes = Width * Height * Channels * BytesPerSample
+      * Calculation   : 640 * 480 * 3 * 1 byte
+      * Payload Size  : 921600 bytes (900.00 KB / 0.8789 MB)
+
+====================================================================================================
+ Case (ii): High Dynamic Range (MaxVal = 65535 -> 16-Bit Quantization Depth, 2 Bytes/Sample)
+====================================================================================================
+  (a) PGM Format (Grayscale, 1 Channel):
+      * Formula       : Expected Bytes = Width * Height * Channels * BytesPerSample
+      * Calculation   : 640 * 480 * 1 * 2 bytes
+      * Payload Size  : 614400 bytes (600.00 KB / 0.5859 MB)
+  (b) PPM Format (Truecolor RGB, 3 Channels):
+      * Formula       : Expected Bytes = Width * Height * Channels * BytesPerSample
+      * Calculation   : 640 * 480 * 3 * 2 bytes
+      * Payload Size  : 1843200 bytes (1800.00 KB / 1.7578 MB)
+
+====================================================================================================
+ Comparative Summary Table (640 x 480 Resolution):
+====================================================================================================
+ Format Type | MaxVal (Bit Depth) | Bytes/Pixel | Total Data Size (Bytes) | Size in KB | Size in MB
+-------------+--------------------+-------------+-------------------------+------------+-----------
+ PGM (Gray)  |   255  ( 8-bit)    |   1 byte    |         307200 bytes     |  300.00 KB | 0.2930 MB 
+ PPM (RGB)   |   255  ( 8-bit)    |   3 bytes   |         921600 bytes     |  900.00 KB | 0.8789 MB 
+ PGM (Gray)  | 65535  (16-bit)    |   2 bytes   |         614400 bytes     |  600.00 KB | 0.5859 MB 
+ PPM (RGB)   | 65535  (16-bit)    |   6 bytes   |        1843200 bytes     | 1800.00 KB | 1.7578 MB 
+====================================================================================================
+
+[Technical Explanation: Why the Number of Bytes Changes Despite Constant Dimensions]:
+  1. Spatial Resolution vs Radiometric (Intensity) Resolution:
+     - The spatial resolution (width x height = 640 x 480 = 307,200 spatial sample points) remains constant.
+     - However, the radiometric quantization depth (precision per sample point) is altered.
+
+  2. Information Theory & Bit-Depth Doubling:
+     - MaxVal = 255 requires 8 bits (1 byte) to represent 2^8 = 256 discrete gray/color levels.
+     - MaxVal = 65535 requires 16 bits (2 bytes) to represent 2^16 = 65,536 discrete intensity levels.
+     - Because every individual sample requires twice as many bits of storage, the total raster payload
+       DOUBLES exactly (100% increase from 307.2 KB -> 614.4 KB for PGM, and 921.6 KB -> 1.84 MB for PPM).
+
+  3. Color Model Dimensionality Scaling:
+     - PPM stores three separate color components (Red, Green, Blue) per pixel.
+     - Hence, PPM is always exactly 3x the memory footprint of PGM at equivalent bit depths.
+====================================================================================================
+
+
+[SUCCESS] Lab 2 Netpbm identification, parsing, verification, and critical analysis completed.
