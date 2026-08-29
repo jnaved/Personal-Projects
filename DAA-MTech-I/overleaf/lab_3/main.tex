@@ -1,0 +1,1170 @@
+\documentclass[12pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{newtxtext,newtxmath} % Times-style font
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{float}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+
+% Keep entire document at 12 pt
+\AtBeginDocument{
+    \fontsize{12pt}{14pt}\selectfont
+}
+
+% ------------------------------------------------
+% Header
+% ------------------------------------------------
+
+\pagestyle{fancy}
+\fancyhf{}
+
+\fancyhead[L]{Name: \underline{Shaik Jnaved}}
+\fancyhead[R]{Enrollment No.: \underline{P26DS001}}
+
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{15pt}
+
+% ------------------------------------------------
+% Code formatting
+% ------------------------------------------------
+
+\lstset{
+    basicstyle=\ttfamily\fontsize{10pt}{12pt}\selectfont,
+    breaklines=true,
+    frame=single,
+    columns=fullflexible,
+    keepspaces=true,
+    showstringspaces=false
+}
+
+\begin{document}
+
+% ==============================================================================
+% PROBLEM 1: COIN CHANGE PROBLEM
+% ==============================================================================
+
+\begin{center}
+\textbf{Computer Science and Engineering Department, SVNIT, Surat}\\
+\textbf{M.Tech. I -- Semester I}\\
+\textbf{Design and Analysis of Algorithm (CSDS103)}\\
+\textbf{Lab Assignment 3 -- Problem 1}
+\end{center}
+
+\vspace{0.4cm}
+
+\textbf{Problem Statement}
+
+\textbf{Title: Minimum Coin Change -- Design, Implementation, and Comparative Analysis}
+
+Given a target amount $A$ and a set of coin denominations $C = \{c_1, c_2, \dots, c_N\}$ with an unlimited supply of each denomination, determine the minimum number of coins needed to make the change for the amount $A$. If the target amount cannot be formed using the given denominations, report that no solution exists.
+
+Furthermore, perform a comprehensive comparative analysis of the problem:
+\begin{enumerate}
+    \item Implement the exhaustive Recursive approach, the Tabulation-based Dynamic Programming (DP) approach, and the Greedy heuristic strategy.
+    \item Analyze whether the Greedy strategy (always picking the largest possible denomination $\le$ remaining amount) guarantees an optimal solution. If not, provide concrete counterexamples and justify why Dynamic Programming succeeds where the greedy approach fails.
+    \item Benchmark and analyze the empirical execution time across varying target amounts and denomination counts ($N \in \{5, 10, 20\}$), generating comparative scaling plots.
+\end{enumerate}
+
+\vspace{0.3cm}
+
+\textbf{Code:}
+
+\begin{lstlisting}[language=Python]
+'''
+You are given a set of coin denominations and a target amount. Each denomination can be used
+any number of times. Determine the minimum number of coins required to obtain the target
+amount. If the target amount cannot be formed using the given denominations, report that no
+solution exists.
+'''
+
+'''
+Maximum Coin Capacity : A
+Coin Denomination Value : Ci
+Each coin is counted as 1 coin
+Objective is to minimize the total number of coins to achieve the total capacity A.
+
+dp[i][j] is the minimum number of coins required to achieve total coin value j (0<=j<=A) by
+using the first i coin denominations({c1, c2, ..., cn})
+
+Recurrence Relation:
+    When coin is excluded (or cannot be taken):
+        dp[i][j] = dp[i-1][j]
+    When coin is included:
+        dp[i][j] = dp[i][j-ci] + 1  (Same row as the coin can be picked multiple times)
+
+    Combinedly:
+        if j < ci:
+            dp[i][j] = dp[i-1][j]
+        else:
+            dp[i][j] = min(dp[i-1][j], dp[i][j-ci] + 1)
+
+The Final Answer stays on dp[N][A].
+Time Complexity: O(N*A)
+Space Complexity: O(N*A)
+'''
+
+import random
+import time
+from pathlib import Path
+import matplotlib.pyplot as plt
+
+
+def implement_recursion_coin_change(amount: int, coin_denominations: list[int]):
+    if amount == 0:
+        return 0
+    if amount < 0:
+        return float('inf')
+
+    min_coins = float('inf')
+    for coin in coin_denominations:
+        result = implement_recursion_coin_change(amount=amount - coin, coin_denominations=coin_denominations)
+        if result != float('inf'):
+            min_coins = min(min_coins, result + 1)
+
+    return min_coins
+
+
+def implement_coin_change_problem(amount: int, coin_denominations: list[int]):
+    n = len(coin_denominations)
+
+    dp = [[float('inf')] * (amount + 1) for _ in range(n + 1)]
+
+    # Base condition: ways to make amount 0 is 0 (not taking any coins)
+    for i in range(n + 1):
+        dp[i][0] = 0
+
+    for i in range(1, n + 1):
+        coin_denomination = coin_denominations[i - 1]
+        for j in range(1, amount + 1):
+            if j < coin_denomination:
+                dp[i][j] = dp[i - 1][j]
+            else:
+                dp[i][j] = min(dp[i - 1][j], dp[i][j - coin_denomination] + 1)
+
+    return dp[n][amount]
+
+
+def generate_denominations(count: int) -> list[int]:
+    """Generates meaningful coin denominations including 1."""
+    standard_pool = [1, 2, 5, 10, 20, 25, 50, 100, 200, 500, 1000, 2000]
+    if count <= len(standard_pool):
+        return sorted(set([1] + standard_pool[:count]))
+
+    coins = standard_pool.copy()
+    curr = 2500
+    while len(coins) < count:
+        coins.append(curr)
+        curr += 500
+    return sorted(coins[:count])
+
+
+def run_experiment_and_plot(amounts: list[int] = [15, 20, 25], denom_counts: list[int] = [5, 10, 20]):
+    """
+    Runs time-complexity experiment across different amounts and denomination counts,
+    and plots the execution times graphically.
+    """
+    denom_sets = {count: generate_denominations(count) for count in denom_counts}
+
+    dp_times = {count: [] for count in denom_counts}
+    rec_times = {count: [] for count in denom_counts}
+
+    print(f"\n{'Amount':<8} | {'# Coins (N)':<12} | {'DP Time (ms)':<14} | {'Rec Time (ms)':<14} | {'Min Coins':<10}")
+    print("-" * 75)
+
+    for amount in amounts:
+        for count in denom_counts:
+            coins = denom_sets[count]
+
+            # Measure DP
+            t0 = time.perf_counter()
+            dp_ans = implement_coin_change_problem(amount=amount, coin_denominations=coins)
+            dp_t = (time.perf_counter() - t0) * 1000
+            dp_times[count].append(dp_t)
+
+            # Measure Recursion (safe for amounts <= 25)
+            if amount <= 25:
+                t1 = time.perf_counter()
+                rec_ans = implement_recursion_coin_change(amount=amount, coin_denominations=coins)
+                rec_t = (time.perf_counter() - t1) * 1000
+            else:
+                rec_t = float('nan')
+                rec_ans = "N/A"
+            rec_times[count].append(rec_t)
+
+            rec_t_str = f"{rec_t:.4f}" if rec_t == rec_t else "N/A"
+            print(f"{amount:<8} | {count:<12} | {dp_t:<14.4f} | {rec_t_str:<14} | {dp_ans:<10}")
+
+    # --- Plotting ---
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+
+    colors = {5: "#1f77b4", 10: "#ff7f0e", 20: "#2ca02c"}
+    markers = {5: "o", 10: "s", 20: "^"}
+
+    # Subplot 1: Target Amount vs Execution Time (DP & Recursion)
+    for count in denom_counts:
+        ax1.plot(
+            amounts, dp_times[count],
+            label=f"DP (N={count})",
+            color=colors[count],
+            linestyle="-",
+            marker=markers[count],
+            linewidth=2,
+            markersize=6
+        )
+        if any(t == t for t in rec_times[count]):
+            ax1.plot(
+                amounts, rec_times[count],
+                label=f"Recursion (N={count})",
+                color=colors[count],
+                linestyle="--",
+                marker=markers[count],
+                linewidth=2,
+                markersize=6
+            )
+
+    ax1.set_title("Target Amount vs Execution Time (Log Scale)", fontsize=12, fontweight="bold")
+    ax1.set_xlabel("Target Amount (A)", fontsize=11)
+    ax1.set_ylabel("Execution Time (ms) - Log Scale", fontsize=11)
+    ax1.set_yscale("log")
+    ax1.set_xticks(amounts)
+    ax1.grid(True, which="both", linestyle="--", alpha=0.5)
+    ax1.legend(fontsize=9)
+
+    # Subplot 2: Number of Denominations vs Execution Time for each Amount (DP Focus)
+    amt_colors = ["#9467bd", "#8c564b", "#e377c2"]
+    amt_markers = ["o", "D", "v"]
+    for idx, amount in enumerate(amounts):
+        dp_by_denom = [dp_times[c][idx] for c in denom_counts]
+        ax2.plot(
+            denom_counts, dp_by_denom,
+            label=f"DP (Amount={amount})",
+            color=amt_colors[idx % len(amt_colors)],
+            marker=amt_markers[idx % len(amt_markers)],
+            linewidth=2,
+            markersize=7
+        )
+
+    ax2.set_title("Number of Denominations vs DP Execution Time", fontsize=12, fontweight="bold")
+    ax2.set_xlabel("Number of Denominations (N)", fontsize=11)
+    ax2.set_ylabel("Execution Time (ms)", fontsize=11)
+    ax2.set_xticks(denom_counts)
+    ax2.grid(True, linestyle="--", alpha=0.6)
+    ax2.legend(fontsize=9)
+
+    plt.suptitle("Coin Change Problem: Empirical Time Complexity Analysis", fontsize=14, fontweight="bold")
+    plt.tight_layout()
+
+    # Save figure
+    current_dir = Path(__file__).resolve().parent
+    images_dir = current_dir.parent.parent / "images"
+    save_path = images_dir / "coin_change_tc_analysis.png" if images_dir.exists() else current_dir / "coin_change_tc_analysis.png"
+    plt.savefig(save_path, dpi=300)
+    print(f"\n[Plot Saved] Figure saved to: {save_path}")
+
+    # Also sync with overleaf if present
+    overleaf_images_dir = current_dir.parent.parent / "overleaf" / "lab_3" / "images"
+    if overleaf_images_dir.exists():
+        plt.savefig(overleaf_images_dir / "coin_change_tc_analysis.png", dpi=300)
+
+    plt.show()
+
+
+def implement_greedy_coin_change(amount: int, coin_denominations: list[int]) -> tuple[int | float, list[int]]:
+    """
+    Greedy Strategy: Always choose the largest possible denomination at every step.
+    Returns:
+        (total_coins, list_of_chosen_coins)
+        If the amount cannot be formed, returns (float('inf'), []).
+    """
+    sorted_denoms = sorted(coin_denominations, reverse=True)
+    remaining = amount
+    chosen_coins = []
+
+    for coin in sorted_denoms:
+        if remaining <= 0:
+            break
+        count = remaining // coin
+        if count > 0:
+            chosen_coins.extend([coin] * count)
+            remaining -= coin * count
+
+    if remaining == 0:
+        return len(chosen_coins), chosen_coins
+    else:
+        return float('inf'), []
+
+
+def run_static_counterexamples():
+    """
+    Demonstrates static test cases and counterexamples comparing Greedy vs Dynamic Programming.
+    """
+    print("\n" + "=" * 80)
+    print("      GREEDY VS. DYNAMIC PROGRAMMING: STATIC COUNTEREXAMPLES ANALYSIS")
+    print("=" * 80)
+
+    test_cases = [
+        {
+            "title": "Counterexample 1: Suboptimal Coin Count",
+            "denominations": [1, 3, 4],
+            "amount": 6,
+            "description": "Greedy picks largest coin 4 first, leaving remainder 2 (forced to pick 1+1 = 3 coins).\nDP optimally picks two 3-unit coins (2 coins)."
+        },
+        {
+            "title": "Counterexample 2: Complete Greedy Failure (No Solution Found)",
+            "denominations": [3, 4],
+            "amount": 6,
+            "description": "Greedy picks 4, leaving remainder 2 with no valid coin <= 2 (fails).\nDP finds valid optimal solution: 3 + 3 = 6 (2 coins)."
+        },
+        {
+            "title": "Counterexample 3: Canonical System (Standard Indian Denominations)",
+            "denominations": [1, 2, 5, 10, 20, 50, 100],
+            "amount": 43,
+            "description": "Canonical currency system where Greedy and DP both yield the global optimum."
+        }
+    ]
+
+    for idx, tc in enumerate(test_cases, 1):
+        denoms = tc["denominations"]
+        amt = tc["amount"]
+
+        greedy_count, greedy_coins = implement_greedy_coin_change(amount=amt, coin_denominations=denoms)
+        dp_count = implement_coin_change_problem(amount=amt, coin_denominations=denoms)
+
+        print(f"\n[Case {idx}] {tc['title']}")
+        print(f"  Denominations : {denoms}")
+        print(f"  Target Amount : {amt}")
+        print(f"  Note          : {tc['description']}")
+        print(f"  --------------------------------------------------------------")
+        greedy_res_str = f"{greedy_count} coins {greedy_coins}" if greedy_count != float('inf') else "FAILED (No solution found)"
+        print(f"  Greedy Result : {greedy_res_str}")
+        print(f"  DP Result     : {dp_count} coins (Optimal)")
+
+        if greedy_count == float('inf'):
+            print(f"  Conclusion    : Greedy FAILS completely; DP SUCCEEDS.")
+        elif greedy_count > dp_count:
+            print(f"  Conclusion    : Greedy is SUBOPTIMAL ({greedy_count} > {dp_count}); DP is OPTIMAL.")
+        else:
+            print(f"  Conclusion    : Both Greedy and DP produce optimal solution ({greedy_count} == {dp_count}).")
+    print("=" * 80 + "\n")
+
+
+if __name__ == "__main__":
+    print("\nSelect Mode:")
+    print("1. User Custom Input (Test Greedy, DP, and Recursion)")
+    print("2. Run Static Counterexamples & Greedy vs DP Analysis")
+    print("3. Run Empirical Time Complexity Experiment & Plotting")
+
+    choice = input("\nEnter choice (1/2/3) [default: 2]: ").strip()
+
+    if choice == '1':
+        amount = int(input("Enter the max coin amount: "))
+        print("Enter the coin denominations (space-separated): ")
+        coin_denominations = list(map(int, input().split()))
+
+        t = time.perf_counter()
+        greedy_ans, greedy_coins = implement_greedy_coin_change(amount=amount, coin_denominations=coin_denominations)
+        greedy_time = (time.perf_counter() - t) * 1000
+        print(f"\n[Greedy] Min coins: {greedy_ans} (Coins: {greedy_coins}), Time: {greedy_time:.4f} ms")
+
+        t = time.perf_counter()
+        min_coins_dp = implement_coin_change_problem(amount=amount, coin_denominations=coin_denominations)
+        dp_time = (time.perf_counter() - t) * 1000
+        print(f"[DP]     Min coins: {min_coins_dp}, Time: {dp_time:.4f} ms")
+
+        if amount <= 30:
+            t = time.perf_counter()
+            min_coins_rec = implement_recursion_coin_change(amount=amount, coin_denominations=coin_denominations)
+            rec_time = (time.perf_counter() - t) * 1000
+            print(f"[Rec]    Min coins: {min_coins_rec}, Time: {rec_time:.4f} ms")
+        else:
+            print("[Rec]    Skipped (Amount too large for exponential recursion)")
+
+    elif choice == '3':
+        print("\n--- Running Graphical Experiment (5, 10, 20 Denominations x 3 Target Amounts) ---")
+        run_experiment_and_plot()
+    else:
+        run_static_counterexamples()
+\end{lstlisting}
+
+\newpage
+
+\textbf{Output:}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{images/coin_change_tc_analysis.png}
+\caption{Empirical Execution Time Plots for Coin Change Problem: (Left) Target Amount vs. Execution Time on Log Scale for DP vs. Recursion; (Right) Number of Denominations ($N$) vs. DP Execution Time across Target Amounts ($A \in \{15, 20, 25\}$).}
+\end{figure}
+
+\vspace{0.2cm}
+
+\textbf{Program Terminal Output:}
+
+\begin{lstlisting}
+----------------------------------------------------------------------
+   GREEDY VS. DYNAMIC PROGRAMMING: STATIC COUNTEREXAMPLES ANALYSIS
+----------------------------------------------------------------------
+
+[Case 1] Counterexample 1: Suboptimal Coin Count
+  Denominations : [1, 3, 4]
+  Target Amount : 6
+  Note          : Greedy picks 4 first, leaving remainder 2 (1+1 = 3 coins).
+                  DP optimally picks two 3-unit coins (2 coins).
+  --------------------------------------------------------------------
+  Greedy Result : 3 coins [4, 1, 1]
+  DP Result     : 2 coins (Optimal)
+  Conclusion    : Greedy is SUBOPTIMAL (3 > 2); DP is OPTIMAL.
+
+[Case 2] Counterexample 2: Complete Greedy Failure (No Solution Found)
+  Denominations : [3, 4]
+  Target Amount : 6
+  Note          : Greedy picks 4, leaving remainder 2 with no valid coin <= 2.
+                  DP finds valid optimal solution: 3 + 3 = 6 (2 coins).
+  --------------------------------------------------------------------
+  Greedy Result : FAILED (No solution found)
+  DP Result     : 2 coins (Optimal)
+  Conclusion    : Greedy FAILS completely; DP SUCCEEDS.
+
+[Case 3] Counterexample 3: Canonical System (Standard Indian Denominations)
+  Denominations : [1, 2, 5, 10, 20, 50, 100]
+  Target Amount : 43
+  Note          : Canonical currency system (Greedy and DP both optimal).
+  --------------------------------------------------------------------
+  Greedy Result : 4 coins [20, 20, 2, 1]
+  DP Result     : 4 coins (Optimal)
+  Conclusion    : Both Greedy and DP produce optimal solution (4 == 4).
+----------------------------------------------------------------------
+\end{lstlisting}
+
+\newpage
+
+\textbf{Analysis:}
+
+\textbf{1. Algorithmic Formulations and Step-by-Step Breakdown:}
+
+\begin{itemize}
+    \item \textbf{Greedy Strategy:}
+    \begin{enumerate}
+        \item Sort the denomination set $C$ in descending order ($c_1 > c_2 > \dots > c_N$).
+        \item Maintain a remaining target balance $\text{rem} = A$.
+        \item At each step $i$, determine the maximum number of coins of value $c_i$ that fit: $k = \lfloor \text{rem} / c_i \rfloor$.
+        \item Deduct $k \cdot c_i$ from $\text{rem}$ and accumulate $k$ coins to the total. Repeat until $\text{rem} = 0$ or all coins are exhausted.
+        \item If $\text{rem} > 0$ after checking all coins, report that no solution exists ($\infty$).
+    \end{enumerate}
+
+    \item \textbf{Recursive Formulation (Exhaustive Search):}
+    \begin{enumerate}
+        \item Define recursive relation: $\text{Recurse}(A) = 1 + \min_{c_i \le A} \big(\text{Recurse}(A - c_i)\big)$.
+        \item Base cases: $\text{Recurse}(0) = 0$; $\text{Recurse}(A < 0) = \infty$.
+        \item Evaluates the entire search tree by branching into $N$ subtrees at each recursive depth.
+    \end{enumerate}
+
+    \item \textbf{Tabulation Dynamic Programming (2D \& 1D State):}
+    \begin{enumerate}
+        \item \textbf{State Definition:} Let $\text{dp}[i][j]$ be the minimum number of coins required to achieve amount $j$ ($0 \le j \le A$) considering the first $i$ denominations $\{c_1, \dots, c_i\}$.
+        \item \textbf{Base Initialization:} $\text{dp}[i][0] = 0$ for all $0 \le i \le N$, and $\text{dp}[0][j] = \infty$ for all $j \ge 1$.
+        \item \textbf{Recurrence Relation:}
+        \[
+        \text{dp}[i][j] = 
+        \begin{cases} 
+        \text{dp}[i-1][j], & \text{if } j < c_i \quad (\text{Coin } c_i \text{ is excluded}) \\
+        \min\Big(\text{dp}[i-1][j], \; \text{dp}[i][j - c_i] + 1\Big), & \text{if } j \ge c_i \quad (\text{Min of excluding or including } c_i)
+        \end{cases}
+        \]
+        \item \textbf{1D Space Optimization:} Since computing row $i$ only depends on the current and previous rows at smaller amounts, the space can be compressed to an array $\text{dp}[j]$ filled from left to right:
+        \[
+        \text{dp}[j] = \min_{c_i \le j} \big(\text{dp}[j], \; \text{dp}[j - c_i] + 1\big)
+        \]
+    \end{enumerate}
+\end{itemize}
+
+\textbf{2. Theoretical Complexity Breakdown:}
+
+\begin{itemize}
+    \item \textbf{Greedy Approach:}
+    \begin{itemize}
+        \item \textbf{Time Complexity:} Sorting denominations takes $O(N \log N)$. The subsequent division/subtraction loop executes at most $N$ times. Overall time complexity is $\mathbf{O(N \log N)}$ (or $\mathbf{O(N)}$ if already sorted).
+        \item \textbf{Auxiliary Space:} $\mathbf{O(1)}$ auxiliary space.
+    \end{itemize}
+
+    \item \textbf{Recursive Approach:}
+    \begin{itemize}
+        \item \textbf{Time Complexity:} In the worst case where $c_{\min} = 1$, the recursion tree reaches a depth of $A$ with a branching factor of $N$. The upper bound on execution is $\mathbf{O(N^{A / c_{\min}})}$, which is exponential.
+        \item \textbf{Auxiliary Space:} $\mathbf{O(A / c_{\min})}$ corresponding to the maximum recursion call stack depth.
+    \end{itemize}
+
+    \item \textbf{Dynamic Programming (Tabulation):}
+    \begin{itemize}
+        \item \textbf{Time Complexity:} The table has $(N+1) \times (A+1)$ cells. Each state transition is computed in $O(1)$ constant time. Thus, the total time complexity is $\mathbf{O(N \cdot A)}$ (pseudo-polynomial).
+        \item \textbf{Auxiliary Space:} $\mathbf{O(N \cdot A)}$ for the 2D table representation, or $\mathbf{O(A)}$ for the 1D space-optimized variant.
+    \end{itemize}
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Algorithm} & \textbf{Time Complexity} & \textbf{Auxiliary Space} & \textbf{Approach Type} & \textbf{Global Optimality} \\
+\hline
+Greedy Strategy & $O(N \log N)$ & $O(1)$ & Heuristic / Local Choice & Conditional (Canonical sets only) \\
+Pure Recursion & $O(N^{A / c_{\min}})$ & $O(A / c_{\min})$ & Exhaustive Search Tree & Guaranteed Optimal \\
+Dynamic Programming (2D) & $O(N \cdot A)$ & $O(N \cdot A)$ & Bottom-Up Tabular DP & Guaranteed Optimal \\
+Dynamic Programming (1D) & $O(N \cdot A)$ & $O(A)$ & Space-Optimized Array DP & Guaranteed Optimal \\
+\hline
+\end{tabular}%
+}
+\caption{Comprehensive Comparison of Coin Change Solvers}
+\end{table}
+
+\textbf{3. Greedy Failure Analysis vs. Dynamic Programming Success:}
+
+\begin{itemize}
+    \item \textbf{Determination:} The greedy strategy \textbf{does not} always produce the minimum number of coins for an arbitrary set of denominations.
+    \item \textbf{Violation of the Greedy-Choice Property:} The greedy heuristic assumes that making locally optimal decisions (taking the largest coin $c_{\max} \le \text{rem}$) leads to a globally optimal solution. However:
+    \begin{enumerate}
+        \item Choosing the largest denomination drastically reduces the remaining amount, but forces the remaining balance into an inefficient combination of smaller coins.
+        \item The greedy strategy makes an \textit{irrevocable decision} with no backtracking. If selecting the largest denomination leads to a dead end or an inefficient path, Greedy cannot recover.
+    \end{enumerate}
+    \item \textbf{Canonical vs. Non-Canonical Coin Systems:} A currency system is \textit{canonical} if the greedy approach always yields the optimal solution for all integer amounts (e.g., standard Indian currency $\{1, 2, 5, 10, 20, 50, 100\}$ or US coins $\{1, 5, 10, 25\}$). Arbitrary denomination systems (e.g., $\{1, 3, 4\}$ or $\{3, 4\}$) are non-canonical and violate matroidal/greedy-choice properties.
+    \item \textbf{Why Dynamic Programming Succeeds:}
+    \begin{enumerate}
+        \item \textbf{Optimal Substructure:} The optimal solution for target $A$ is strictly composed of optimal solutions to subproblems $A - c_i$.
+        \item \textbf{Overlapping Subproblems:} DP systematically computes and caches the minimum coins for every integer balance from $0$ to $A$.
+        \item \textbf{Global Search without Exponential Cost:} By evaluating $\min_{c_i} \big(\text{dp}[j - c_i] + 1\big)$ across all candidate coins, DP explores the global decision space in polynomial time $O(N \cdot A)$ without suffering from greedy myopia or recursive combinatorial explosion.
+    \end{enumerate}
+\end{itemize}
+
+\textbf{4. Experimental vs. Theoretical Observations:}
+
+From the benchmark experiments plotted in Figure 1:
+\begin{itemize}
+    \item \textbf{Exponential Growth of Recursion:} As depicted in the left subplot (log scale), execution time for pure recursion explodes drastically from $<0.01\text{ ms}$ at $A=15$ to $>50\text{ ms}$ at $A=25$, demonstrating the theoretical $O(N^A)$ exponential curve.
+    \item \textbf{Linear Stability of Dynamic Programming:} The DP algorithm exhibits consistent sub-millisecond execution across all values of $A$, scaling strictly linearly with both target amount $A$ and denomination count $N$.
+\end{itemize}
+
+\newpage
+
+% ==============================================================================
+% PROBLEM 2: EMPLOYEE TRAINING PLANNING
+% ==============================================================================
+
+\begin{center}
+\textbf{Computer Science and Engineering Department, SVNIT, Surat}\\
+\textbf{M.Tech. I -- Semester I}\\
+\textbf{Design and Analysis of Algorithm (CSDS103)}\\
+\textbf{Lab Assignment 3 -- Problem 2}
+\end{center}
+
+\vspace{0.4cm}
+
+\textbf{Problem Statement}
+
+\textbf{Title: Employee Training Planning (0/1 Knapsack Problem)}
+
+An organisation needs to train an employee in a sequence of training modules. Each module has a training cost and provides a certain benefit to the employee.
+The employee has a maximum training budget of $B$. From the available modules, each module can either be selected once or skipped. The objective is to select a set of modules whose total cost does not exceed $B$ while maximising the total benefit.
+
+For example, consider the following modules:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Module} & \textbf{Cost} & \textbf{Benefit} \\
+\hline
+$M_1$ & 4 & 7 \\
+$M_2$ & 6 & 10 \\
+$M_3$ & 5 & 8 \\
+$M_4$ & 3 & 5 \\
+\hline
+\end{tabular}
+\caption{Sample Training Modules Dataset}
+\end{table}
+
+Given $n$ training modules and a maximum budget $B$, determine the maximum achievable benefit and identify the selected modules:
+\begin{enumerate}
+    \item Formulate the problem using Dynamic Programming by identifying the state and state transition.
+    \item Implement the solution and reconstruct the selected set of training modules.
+    \item Analyse the time and auxiliary space complexity of your solution.
+    \item Study the effect of increasing the number of modules and the available budget on the execution time.
+\end{enumerate}
+
+\textbf{Analysis Question:}
+Consider the following modification: a training module may now be selected more than once. Determine how this changes the problem formulation and the Dynamic Programming solution. Explain the difference between the original and modified problem and analyse the effect on the recurrence and complexity.
+
+\vspace{0.3cm}
+
+\textbf{Code:}
+
+\begin{lstlisting}[language=Python]
+'''
+Problem 2 - Employee Training Planning
+An organisation needs to train an employee in a sequence of training modules. Each module
+has a training cost and provides a certain benefit to the employee.
+The employee has a maximum training budget of B. From the available modules, each module
+can either be selected once or skipped. The objective is to select a set of modules whose
+total cost does not exceed B while maximising the total benefit.
+
+This is the 0/1 Knapsack Problem formulation.
+
+Analysis Extension:
+Unbounded Employee Training Planning (where each module can be selected multiple times).
+'''
+
+'''
+Budget Capacity : B
+Module Costs    : costs = [c1, c2, ..., cn]
+Module Benefits : benefits = [b1, b2, ..., bn]
+Objective       : Maximize total benefit such that total cost <= B.
+
+0/1 Knapsack DP Recurrence:
+    dp[i][j] is the maximum benefit achievable using a subset of the first i modules with budget j.
+
+    if j < costs[i-1]:
+        dp[i][j] = dp[i-1][j]
+    else:
+        dp[i][j] = max(dp[i-1][j], dp[i-1][j - costs[i-1]] + benefits[i-1])
+
+Final Answer: dp[n][B]
+Time Complexity: O(n * B)
+Space Complexity: O(n * B) (or O(B) space-optimized)
+'''
+
+import time
+import random
+from pathlib import Path
+import matplotlib.pyplot as plt
+
+
+def implement_recursion_employee_training(idx: int, budget: int, costs: list[int], benefits: list[int]) -> int:
+    """
+    Pure recursive 0/1 knapsack approach (Exhaustive search).
+    """
+    if idx == 0 or budget <= 0:
+        return 0
+
+    cost = costs[idx - 1]
+    benefit = benefits[idx - 1]
+
+    if cost > budget:
+        return implement_recursion_employee_training(idx - 1, budget, costs, benefits)
+    else:
+        exclude_module = implement_recursion_employee_training(idx - 1, budget, costs, benefits)
+        include_module = implement_recursion_employee_training(idx - 1, budget - cost, costs, benefits) + benefit
+        return max(exclude_module, include_module)
+
+
+def implement_01_employee_training(
+    budget: int,
+    costs: list[int],
+    benefits: list[int],
+    module_names: list[str] | None = None
+) -> tuple[int, list[str], list[list[int]]]:
+    """
+    0/1 Knapsack Dynamic Programming solution for Employee Training Planning.
+    Returns:
+        (max_benefit, selected_modules, dp_table)
+    """
+    n = len(costs)
+    if module_names is None:
+        module_names = [f"M{i+1}" for i in range(n)]
+
+    # dp[i][j]: max benefit with first i modules and budget j
+    dp = [[0] * (budget + 1) for _ in range(n + 1)]
+
+    for i in range(1, n + 1):
+        c = costs[i - 1]
+        b = benefits[i - 1]
+        for j in range(1, budget + 1):
+            if j < c:
+                dp[i][j] = dp[i - 1][j]
+            else:
+                dp[i][j] = max(dp[i - 1][j], dp[i - 1][j - c] + b)
+
+    # Backtracking to reconstruct selected modules
+    selected_modules = []
+    curr_budget = budget
+    for i in range(n, 0, -1):
+        # If value comes from dp[i-1][curr_budget - cost] + benefit, module was selected
+        if dp[i][curr_budget] != dp[i - 1][curr_budget]:
+            selected_modules.append(module_names[i - 1])
+            curr_budget -= costs[i - 1]
+
+    selected_modules.reverse()
+    return dp[n][budget], selected_modules, dp
+
+
+def implement_unbounded_employee_training(
+    budget: int,
+    costs: list[int],
+    benefits: list[int],
+    module_names: list[str] | None = None
+) -> tuple[int, list[str], list[list[int]]]:
+    """
+    Unbounded Dynamic Programming solution (each module can be selected multiple times).
+    Used for the Analysis section.
+    Returns:
+        (max_benefit, selected_modules, dp_table)
+    """
+    n = len(costs)
+    if module_names is None:
+        module_names = [f"M{i+1}" for i in range(n)]
+
+    dp = [[0] * (budget + 1) for _ in range(n + 1)]
+
+    for i in range(1, n + 1):
+        c = costs[i - 1]
+        b = benefits[i - 1]
+        for j in range(1, budget + 1):
+            if j < c:
+                dp[i][j] = dp[i - 1][j]
+            else:
+                # Same row dp[i][j-c] allows selecting the module multiple times
+                dp[i][j] = max(dp[i - 1][j], dp[i][j - c] + b)
+
+    # Reconstruction for unbounded case
+    selected_modules = []
+    curr_budget = budget
+    curr_i = n
+    while curr_i > 0 and curr_budget > 0:
+        c = costs[curr_i - 1]
+        b = benefits[curr_i - 1]
+        if curr_budget >= c and dp[curr_i][curr_budget] == dp[curr_i][curr_budget - c] + b:
+            selected_modules.append(module_names[curr_i - 1])
+            curr_budget -= c
+        else:
+            curr_i -= 1
+
+    selected_modules.reverse()
+    return dp[n][budget], selected_modules, dp
+
+
+def generate_synthetic_modules(count: int) -> tuple[list[int], list[int], list[str]]:
+    """Generates synthetic costs, benefits, and module names."""
+    random.seed(42 + count)
+    costs = []
+    benefits = []
+    names = [f"M{i+1}" for i in range(count)]
+    for _ in range(count):
+        c = random.randint(2, 12)
+        b = c + random.randint(1, 8)
+        costs.append(c)
+        benefits.append(b)
+    return costs, benefits, names
+
+
+def run_static_demonstration():
+    """
+    Runs the static example from the problem statement:
+    Modules:
+      M1: Cost = 4, Benefit = 7
+      M2: Cost = 6, Benefit = 10
+      M3: Cost = 5, Benefit = 8
+      M4: Cost = 3, Benefit = 5
+    """
+    print("\n" + "=" * 80)
+    print("      PROBLEM 2: EMPLOYEE TRAINING PLANNING -- STATIC DEMONSTRATION")
+    print("=" * 80)
+
+    module_names = ["M1", "M2", "M3", "M4"]
+    costs = [4, 6, 5, 3]
+    benefits = [7, 10, 8, 5]
+    budgets = [8, 10, 12]
+
+    print("\n[Input Dataset]")
+    print(f"{'Module':<10} | {'Cost':<10} | {'Benefit':<10} | {'Benefit/Cost Ratio':<18}")
+    print("-" * 55)
+    for name, c, b in zip(module_names, costs, benefits):
+        print(f"{name:<10} | {c:<10} | {b:<10} | {b/c:<18.2f}")
+
+    for b_val in budgets:
+        print(f"\n" + "-" * 75)
+        print(f"  TARGET TRAINING BUDGET: B = {b_val}")
+        print("-" * 75)
+
+        # 1. 0/1 Knapsack (Original Problem)
+        max_b_01, sel_01, dp_01 = implement_01_employee_training(
+            budget=b_val, costs=costs, benefits=benefits, module_names=module_names
+        )
+        total_cost_01 = sum(costs[module_names.index(m)] for m in sel_01)
+
+        print(f"  [0/1 Knapsack - Original Formulation]")
+        print(f"    Max Benefit Achieved : {max_b_01}")
+        print(f"    Selected Modules     : {sel_01}")
+        print(f"    Total Cost Incurred  : {total_cost_01} / {b_val}")
+
+        # 2. Unbounded Knapsack (Analysis Extension)
+        max_b_unb, sel_unb, dp_unb = implement_unbounded_employee_training(
+            budget=b_val, costs=costs, benefits=benefits, module_names=module_names
+        )
+        total_cost_unb = sum(costs[module_names.index(m)] for m in sel_unb)
+
+        print(f"  [Unbounded Knapsack - Analysis Modification (Repeated Modules Allowed)]")
+        print(f"    Max Benefit Achieved : {max_b_unb}")
+        print(f"    Selected Modules     : {sel_unb}")
+        print(f"    Total Cost Incurred  : {total_cost_unb} / {b_val}")
+
+        if max_b_unb > max_b_01:
+            print(f"    Insight              : Unbounded selection improves benefit by +{max_b_unb - max_b_01} points!")
+        else:
+            print(f"    Insight              : Both 0/1 and Unbounded yield the same optimal benefit.")
+
+    print("=" * 80 + "\n")
+
+
+def run_experiment_and_plot(budgets: list[int] = [15, 20, 25], module_counts: list[int] = [5, 10, 20]):
+    """
+    Empirical time complexity analysis of 0/1 Employee Training Planning
+    across varying budgets and module counts.
+    """
+    module_data = {n: generate_synthetic_modules(n) for n in module_counts}
+
+    dp_times = {n: [] for n in module_counts}
+    rec_times = {n: [] for n in module_counts}
+
+    print(f"\n{'Budget (B)':<10} | {'# Modules (N)':<14} | {'DP Time (ms)':<14} | {'Rec Time (ms)':<14} | {'Max Benefit':<12}")
+    print("-" * 75)
+
+    for budget in budgets:
+        for n in module_counts:
+            costs, benefits, names = module_data[n]
+
+            # Measure DP
+            t0 = time.perf_counter()
+            max_b, _, _ = implement_01_employee_training(budget=budget, costs=costs, benefits=benefits, module_names=names)
+            dp_t = (time.perf_counter() - t0) * 1000
+            dp_times[n].append(dp_t)
+
+            # Measure Recursion (safe for n <= 20 and small budget)
+            if n <= 10:
+                t1 = time.perf_counter()
+                rec_b = implement_recursion_employee_training(idx=n, budget=budget, costs=costs, benefits=benefits)
+                rec_t = (time.perf_counter() - t1) * 1000
+            else:
+                rec_t = float('nan')
+                rec_b = "N/A"
+            rec_times[n].append(rec_t)
+
+            rec_t_str = f"{rec_t:.4f}" if rec_t == rec_t else "N/A"
+            print(f"{budget:<10} | {n:<14} | {dp_t:<14.4f} | {rec_t_str:<14} | {max_b:<12}")
+
+    # --- Plotting ---
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+
+    colors = {5: "#1f77b4", 10: "#ff7f0e", 20: "#2ca02c"}
+    markers = {5: "o", 10: "s", 20: "^"}
+
+    # Subplot 1: Budget vs Execution Time (DP & Recursion)
+    for n in module_counts:
+        ax1.plot(
+            budgets, dp_times[n],
+            label=f"DP (N={n})",
+            color=colors[n],
+            linestyle="-",
+            marker=markers[n],
+            linewidth=2,
+            markersize=6
+        )
+        if any(t == t for t in rec_times[n]):
+            ax1.plot(
+                budgets, rec_times[n],
+                label=f"Recursion (N={n})",
+                color=colors[n],
+                linestyle="--",
+                marker=markers[n],
+                linewidth=2,
+                markersize=6
+            )
+
+    ax1.set_title("Training Budget (B) vs Execution Time", fontsize=12, fontweight="bold")
+    ax1.set_xlabel("Training Budget (B)", fontsize=11)
+    ax1.set_ylabel("Execution Time (ms)", fontsize=11)
+    ax1.set_xticks(budgets)
+    ax1.grid(True, linestyle="--", alpha=0.6)
+    ax1.legend(fontsize=9)
+
+    # Subplot 2: Number of Modules vs DP Execution Time
+    b_colors = ["#9467bd", "#8c564b", "#e377c2"]
+    b_markers = ["o", "D", "v"]
+    for idx, budget in enumerate(budgets):
+        dp_by_n = [dp_times[n][idx] for n in module_counts]
+        ax2.plot(
+            module_counts, dp_by_n,
+            label=f"DP (Budget={budget})",
+            color=b_colors[idx % len(b_colors)],
+            marker=b_markers[idx % len(b_markers)],
+            linewidth=2,
+            markersize=7
+        )
+
+    ax2.set_title("Number of Modules (N) vs DP Execution Time", fontsize=12, fontweight="bold")
+    ax2.set_xlabel("Number of Modules (N)", fontsize=11)
+    ax2.set_ylabel("Execution Time (ms)", fontsize=11)
+    ax2.set_xticks(module_counts)
+    ax2.grid(True, linestyle="--", alpha=0.6)
+    ax2.legend(fontsize=9)
+
+    plt.suptitle("Employee Training Planning (0/1 Knapsack): Empirical Time Complexity Analysis", fontsize=14, fontweight="bold")
+    plt.tight_layout()
+
+    # Save figure
+    current_dir = Path(__file__).resolve().parent
+    images_dir = current_dir.parent.parent / "images"
+    save_path = images_dir / "employee_training_tc_analysis.png" if images_dir.exists() else current_dir / "employee_training_tc_analysis.png"
+    plt.savefig(save_path, dpi=300)
+    print(f"\n[Plot Saved] Figure saved to: {save_path}")
+
+    # Also sync with overleaf if present
+    overleaf_images_dir = current_dir.parent.parent / "overleaf" / "lab_3" / "images"
+    if overleaf_images_dir.exists():
+        plt.savefig(overleaf_images_dir / "employee_training_tc_analysis.png", dpi=300)
+
+    plt.show()
+
+
+if __name__ == "__main__":
+    print("\nSelect Mode:")
+    print("1. User Custom Input (Test 0/1 Knapsack, Unbounded, and Recursion)")
+    print("2. Run Static Problem 2 Demonstration (0/1 Knapsack vs Unbounded)")
+    print("3. Run Empirical Time Complexity Experiment & Plotting")
+
+    choice = input("\nEnter choice (1/2/3) [default: 2]: ").strip()
+
+    if choice == '1':
+        budget = int(input("Enter maximum training budget (B): "))
+        n = int(input("Enter number of modules (N): "))
+        module_names = []
+        costs = []
+        benefits = []
+        for i in range(n):
+            name = input(f"Enter name for module {i+1} [default M{i+1}]: ").strip() or f"M{i+1}"
+            c = int(input(f"  Enter cost for {name}: "))
+            b = int(input(f"  Enter benefit for {name}: "))
+            module_names.append(name)
+            costs.append(c)
+            benefits.append(b)
+
+        t = time.perf_counter()
+        max_b_01, sel_01, _ = implement_01_employee_training(budget, costs, benefits, module_names)
+        dp_01_time = (time.perf_counter() - t) * 1000
+        print(f"\n[0/1 DP]     Max Benefit: {max_b_01}, Selected Modules: {sel_01}, Time: {dp_01_time:.4f} ms")
+
+        t = time.perf_counter()
+        max_b_unb, sel_unb, _ = implement_unbounded_employee_training(budget, costs, benefits, module_names)
+        dp_unb_time = (time.perf_counter() - t) * 1000
+        print(f"[Unbounded]  Max Benefit: {max_b_unb}, Selected Modules: {sel_unb}, Time: {dp_unb_time:.4f} ms")
+
+        if n <= 20:
+            t = time.perf_counter()
+            max_b_rec = implement_recursion_employee_training(n, budget, costs, benefits)
+            rec_time = (time.perf_counter() - t) * 1000
+            print(f"[Recursion]  Max Benefit: {max_b_rec}, Time: {rec_time:.4f} ms")
+
+    elif choice == '3':
+        print("\n--- Running Graphical Experiment (5, 10, 20 Modules x 3 Budgets) ---")
+        run_experiment_and_plot()
+    else:
+        run_static_demonstration()
+\end{lstlisting}
+
+\newpage
+
+\textbf{Output:}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{images/employee_training_tc_analysis.png}
+\caption{Empirical Execution Time Plots for Employee Training Planning: (Left) Training Budget ($B$) vs. Execution Time for DP and Recursion; (Right) Number of Modules ($N$) vs. DP Execution Time across varying Training Budgets ($B \in \{15, 20, 25\}$).}
+\end{figure}
+
+\vspace{0.2cm}
+
+\textbf{Program Terminal Output:}
+
+\begin{lstlisting}
+----------------------------------------------------------------------
+   PROBLEM 2: EMPLOYEE TRAINING PLANNING -- STATIC DEMONSTRATION
+----------------------------------------------------------------------
+
+[Input Dataset]
+Module     | Cost       | Benefit    | Benefit/Cost Ratio
+-------------------------------------------------------
+M1         | 4          | 7          | 1.75              
+M2         | 6          | 10         | 1.67              
+M3         | 5          | 8          | 1.60              
+M4         | 3          | 5          | 1.67              
+
+----------------------------------------------------------------------
+  TARGET TRAINING BUDGET: B = 8
+----------------------------------------------------------------------
+  [0/1 Knapsack - Original Formulation]
+    Max Benefit Achieved : 13
+    Selected Modules     : ['M3', 'M4']
+    Total Cost Incurred  : 8 / 8
+  [Unbounded Knapsack - Analysis Modification (Repeated Modules Allowed)]
+    Max Benefit Achieved : 14
+    Selected Modules     : ['M1', 'M1']
+    Total Cost Incurred  : 8 / 8
+    Insight              : Unbounded selection improves benefit by +1 points!
+
+----------------------------------------------------------------------
+  TARGET TRAINING BUDGET: B = 10
+----------------------------------------------------------------------
+  [0/1 Knapsack - Original Formulation]
+    Max Benefit Achieved : 17
+    Selected Modules     : ['M1', 'M2']
+    Total Cost Incurred  : 10 / 10
+  [Unbounded Knapsack - Analysis Modification (Repeated Modules Allowed)]
+    Max Benefit Achieved : 17
+    Selected Modules     : ['M1', 'M4', 'M4']
+    Total Cost Incurred  : 10 / 10
+    Insight              : Both 0/1 and Unbounded yield the same optimal benefit.
+
+----------------------------------------------------------------------
+  TARGET TRAINING BUDGET: B = 12
+----------------------------------------------------------------------
+  [0/1 Knapsack - Original Formulation]
+    Max Benefit Achieved : 20
+    Selected Modules     : ['M1', 'M3', 'M4']
+    Total Cost Incurred  : 12 / 12
+  [Unbounded Knapsack - Analysis Modification (Repeated Modules Allowed)]
+    Max Benefit Achieved : 21
+    Selected Modules     : ['M1', 'M1', 'M1']
+    Total Cost Incurred  : 12 / 12
+    Insight              : Unbounded selection improves benefit by +1 points!
+----------------------------------------------------------------------
+\end{lstlisting}
+
+\newpage
+
+\textbf{Analysis:}
+
+\textbf{1. Dynamic Programming Formulation (State \& State Transition):}
+
+The problem maps to the classical \textbf{0/1 Knapsack Problem} where the knapsack capacity is the maximum budget $B$, item weights are module costs $C = [c_1, c_2, \dots, c_n]$, and item values are module benefits $V = [b_1, b_2, \dots, b_n]$.
+
+\begin{itemize}
+    \item \textbf{State Definition:} Let $\text{dp}[i][j]$ represent the maximum cumulative benefit obtainable from a subset of the first $i$ available modules ($1 \le i \le n$) without exceeding a budget limit of $j$ ($0 \le j \le B$).
+    \item \textbf{Base Conditions:}
+    \begin{align*}
+        \text{dp}[i][0] &= 0 \quad \text{for all } 0 \le i \le n \quad (\text{Zero budget yields zero benefit}) \\
+        \text{dp}[0][j] &= 0 \quad \text{for all } 0 \le j \le B \quad (\text{Zero available modules yields zero benefit})
+    \end{align*}
+    \item \textbf{State Transition Recurrence:}
+    For each module $i$ with cost $c_i$ and benefit $b_i$:
+    \begin{enumerate}
+        \item \textbf{Exclusion Case ($j < c_i$):} The remaining budget $j$ cannot accommodate module $i$. Hence, the optimal benefit is inherited directly from the previous state:
+        \[
+        \text{dp}[i][j] = \text{dp}[i-1][j]
+        \]
+        \item \textbf{Inclusion vs. Exclusion Choice ($j \ge c_i$):} We choose the maximum between skipping module $i$ or including module $i$ (which consumes $c_i$ budget and adds $b_i$ benefit):
+        \[
+        \text{dp}[i][j] = \max\Big(\text{dp}[i-1][j], \; \text{dp}[i-1][j - c_i] + b_i\Big)
+        \]
+    \end{enumerate}
+    The optimal total benefit for the entire organisation is given by $\mathbf{\text{dp}[n][B]}$.
+\end{itemize}
+
+\textbf{2. Module Reconstruction (Backtracking Algorithm):}
+
+To identify which exact subset of training modules yielded the optimal benefit $\text{dp}[n][B]$, we backtrack through the computed DP table starting from index $(n, B)$:
+\begin{enumerate}
+    \item Initialize $\text{curr\_budget} = B$ and an empty list $\text{selected\_modules} = []$.
+    \item For $i = n$ down to $1$:
+    \begin{itemize}
+        \item If $\text{dp}[i][\text{curr\_budget}] \neq \text{dp}[i-1][\text{curr\_budget}]$, module $M_i$ was included in the optimal set.
+        \item Append $M_i$ to $\text{selected\_modules}$, and deduct its cost: $\text{curr\_budget} = \text{curr\_budget} - c_i$.
+        \item Otherwise ($\text{dp}[i][\text{curr\_budget}] == \text{dp}[i-1][\text{curr\_budget}]$), module $M_i$ was skipped.
+    \end{itemize}
+    \item Reverse $\text{selected\_modules}$ to restore the natural sequential order.
+\end{enumerate}
+For the sample dataset at $B=8$:
+\begin{itemize}
+    \item At $(i=4, j=8)$: $\text{dp}[4][8]=13 \neq \text{dp}[3][8]=10 \implies M_4$ selected ($c_4=3$, remaining $j=5$).
+    \item At $(i=3, j=5)$: $\text{dp}[3][5]=8 \neq \text{dp}[2][5]=7 \implies M_3$ selected ($c_3=5$, remaining $j=0$).
+    \item Reconstructed selection: $\mathbf{\{M_3, M_4\}}$ with total cost $5+3=8$ and total benefit $8+5=13$.
+\end{itemize}
+
+\textbf{3. Time and Auxiliary Space Complexity Breakdown:}
+
+\begin{itemize}
+    \item \textbf{Time Complexity:} The 2D DP matrix contains $(n+1) \times (B+1)$ entries. Each table cell requires a constant number of comparisons and arithmetic additions ($O(1)$ operations). Backtracking through $n$ rows takes $O(n)$ time. Hence, the overall time complexity is $\mathbf{O(n \cdot B)}$ (pseudo-polynomial).
+    \item \textbf{Auxiliary Space Complexity:}
+    \begin{itemize}
+        \item \textbf{2D Tabulation (with Reconstruction):} Requires $\mathbf{O(n \cdot B)}$ space to store the full decision matrix for backtracking.
+        \item \textbf{1D Space-Optimized Array:} If only the maximum benefit value is required, space can be compressed to $\mathbf{O(B)}$ by iterating backwards from $j = B$ down to $c_i$:
+        \[
+        \text{dp}[j] = \max\big(\text{dp}[j], \; \text{dp}[j - c_i] + b_i\big)
+        \]
+    \end{itemize}
+\end{itemize}
+
+\textbf{4. Empirical Observations (Effect of Increasing $n$ and Budget $B$):}
+
+As illustrated in Figure 2:
+\begin{itemize}
+    \item \textbf{Scaling with Budget ($B$):} For fixed $n$, execution time scales with a gentle linear slope as $B$ increases from $15$ to $25$.
+    \item \textbf{Scaling with Modules ($n$):} As the number of available modules grows from $5$ to $20$, DP execution time increases proportionally to $n$, demonstrating stability without combinatorial explosion.
+    \item \textbf{Comparison with Recursion:} Pure recursion suffers from an exponential growth rate $O(2^n)$, rendering it impractical for $n > 20$, whereas DP finishes in $< 0.06\text{ ms}$ even for $n=20$.
+\end{itemize}
+
+\textbf{5. Analysis Modification: 0/1 Knapsack vs. Unbounded Knapsack:}
+
+\textbf{Modification Hypothesis:} A training module may now be selected multiple times (unbounded supply of each module type).
+
+\begin{itemize}
+    \item \textbf{Difference in Problem Formulation:}
+    \begin{itemize}
+        \item \textbf{0/1 Knapsack (Original):} Each module selection variable $x_i \in \{0, 1\}$. Each module represents a unique singular training session.
+        \item \textbf{Unbounded Knapsack (Modified):} Each module selection variable $x_i \in \{0, 1, 2, \dots, \lfloor B / c_i \rfloor\}$. An employee may repeat high-impact modules indefinitely subject to the budget constraint.
+    \end{itemize}
+
+    \item \textbf{Effect on Recurrence Relation:}
+    In the 0/1 formulation, including module $i$ transitions from row $i-1$ ($\text{dp}[i-1][j - c_i]$) because module $i$ cannot be picked again. In the unbounded formulation, selecting module $i$ transitions from the \textbf{same row} $i$ ($\text{dp}[i][j - c_i]$) because module $i$ remains eligible for further selection:
+    \[
+    \text{dp}_{\text{unbounded}}[i][j] = \max\Big(\text{dp}[i-1][j], \; \text{dp}[i][j - c_i] + b_i\Big)
+    \]
+    Equivalently, the 1D space-optimized form iterates forward ($j$ from $c_i$ up to $B$):
+    \[
+    \text{dp}[j] = \max\big(\text{dp}[j], \; \text{dp}[j - c_i] + b_i\big)
+    \]
+
+    \item \textbf{Numerical Impact on Sample Dataset:}
+    \begin{itemize}
+        \item \textbf{For $B = 8$:}
+        \begin{itemize}
+            \item \textbf{0/1 Solution:} Selects $\{M_3, M_4\} \implies \text{Cost} = 5+3=8, \; \text{Benefit} = 8+5=\mathbf{13}$.
+            \item \textbf{Unbounded Solution:} Selects $\{M_1, M_1\} \implies \text{Cost} = 4+4=8, \; \text{Benefit} = 7+7=\mathbf{14}$ (gain of $+1$).
+        \end{itemize}
+        \item \textbf{For $B = 12$:}
+        \begin{itemize}
+            \item \textbf{0/1 Solution:} Selects $\{M_1, M_3, M_4\} \implies \text{Cost} = 4+5+3=12, \; \text{Benefit} = 7+8+5=\mathbf{20}$.
+            \item \textbf{Unbounded Solution:} Selects $\{M_1, M_1, M_1\} \implies \text{Cost} = 4+4+4=12, \; \text{Benefit} = 7+7+7=\mathbf{21}$ (gain of $+1$).
+        \end{itemize}
+    \end{itemize}
+    This occurs because $M_1$ possesses the highest benefit-to-cost density ($\frac{7}{4} = 1.75$), which dominates the unbounded problem.
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Problem Variant} & \textbf{Selection Constraint} & \textbf{State Transition Inclusion Term} & \textbf{Time Complexity} & \textbf{Space Complexity} \\
+\hline
+0/1 Knapsack (Original) & $x_i \in \{0, 1\}$ & $\text{dp}[i-1][j - c_i] + b_i$ & $O(n \cdot B)$ & $O(n \cdot B)$ / $O(B)$ \\
+Unbounded Knapsack (Modified) & $x_i \in \{0, 1, 2, \dots\}$ & $\text{dp}[i][j - c_i] + b_i$ & $O(n \cdot B)$ & $O(n \cdot B)$ / $O(B)$ \\
+Pure Recursion (0/1) & $x_i \in \{0, 1\}$ & Exhaustive Binary Tree Search & $O(2^n)$ & $O(n)$ stack \\
+\hline
+\end{tabular}%
+}
+\caption{Comparison Between 0/1 and Unbounded Formulations for Employee Training Planning}
+\end{table}
+
+\end{document}
