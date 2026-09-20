@@ -1,9 +1,9 @@
-jupyter
 ipykernel
+jupyter
+matplotlib
+nltk
+numpy
 pandas
 scikit-learn
-matplotlib
 seaborn
-numpy
-nltk
 tqdm
