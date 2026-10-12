@@ -1,0 +1,843 @@
+\documentclass[12pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{newtxtext,newtxmath} % Times-style typography
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{hyperref}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+
+% Keep entire document at 12 pt
+\AtBeginDocument{
+    \fontsize{12pt}{14pt}\selectfont
+}
+
+% ------------------------------------------------
+% Header Configuration
+% ------------------------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Name: \underline{Shaik Jnaved}}
+\fancyhead[R]{Enrollment No.: \underline{P26DS001}}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{15pt}
+
+% ------------------------------------------------
+% Code Formatting
+% ------------------------------------------------
+\lstset{
+    basicstyle=\ttfamily\fontsize{9pt}{11pt}\selectfont,
+    breaklines=true,
+    frame=single,
+    columns=fullflexible,
+    keepspaces=true,
+    showstringspaces=false
+}
+
+\begin{document}
+
+% ==============================================================================
+% COVER / TITLE BANNER
+% ==============================================================================
+\begin{center}
+\textbf{Computer Science and Engineering Department, SVNIT, Surat}\\
+\textbf{M.Tech. I -- Semester I}\\
+\textbf{Design and Analysis of Algorithm (CSDS103)}\\
+\textbf{Lab Assignment 5: Comprehensive Report}
+\end{center}
+
+\vspace{0.3cm}
+\hrule
+\vspace{0.4cm}
+
+This laboratory assignment covers six rigorous algorithmic investigations encompassing the Divide and Conquer paradigm, computational geometry, large-scale systems programming in C++ with Linux high-resolution timing, order-statistic selection routines, nested loop complexity analysis, and arbitrary-precision integer arithmetic via Karatsuba's algorithm.
+
+\vspace{0.4cm}
+
+% ==============================================================================
+% PROBLEM 1: CLOSEST PAIR OF POINTS IN 2D PLANE
+% ==============================================================================
+\begin{center}
+\textbf{Problem 1: Closest Pair of Points in a Two-Dimensional Plane}
+\end{center}
+
+\textbf{Problem Statement (Assignment 1)}:
+Find the closest pair of points in a two-dimensional plane using the Divide and Conquer technique.
+\begin{itemize}
+    \item Implement the brute-force approach.
+    \item Implement the divide-and-conquer approach.
+    \item Generate sets of points of different sizes ($N \in \{10, 50, 100, 200, 500, 1000\}$).
+    \item Measure execution times of both approaches.
+    \item Compare their empirical performance and analyze theoretical complexities.
+\end{itemize}
+
+\vspace{0.2cm}
+\textbf{Code:}
+
+\begin{lstlisting}[language=Python]
+# Find closest pair of points in 2-D plane
+import math
+import random
+import time
+from pathlib import Path
+import matplotlib.pyplot as plt
+
+def find_dist(p1: tuple[int, int], p2: tuple[int, int]) -> float:
+    return math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
+
+def brute_force(points: list[tuple[int, int]]):
+    n = len(points)
+    min_dist: float = float('inf')
+    min_pair = []
+    for i in range(n - 1):
+        p1 = points[i]
+        for j in range(i + 1, n):
+            p2 = points[j]
+            dist = find_dist(p1=p1, p2=p2)
+            if dist < min_dist:
+                min_dist = dist
+                min_pair = [p1, p2]
+    return min_dist, min_pair
+
+def strip_closest(strip: list[tuple[int, int]], d: float):
+    min_dist = d
+    min_pair = []
+    strip.sort(key=lambda x: x[1])
+
+    for i in range(len(strip)):
+        for j in range(i + 1, len(strip)):
+            if strip[j][1] - strip[i][1] >= min_dist:
+                break
+            dist = find_dist(p1=strip[i], p2=strip[j])
+            if dist < min_dist:
+                min_dist = dist
+                min_pair = [strip[i], strip[j]]
+    return min_dist, min_pair
+
+def dac(points: list[tuple[int, int]]):
+    points.sort()
+    n = len(points)
+    if n <= 3:
+        return brute_force(points=points)
+
+    mid = n // 2
+    mid_point = points[mid]
+
+    d_left, left_sub = dac(points=points[:mid])
+    d_right, right_sub = dac(points=points[mid:])
+
+    d, min_pair = [d_left, left_sub] if d_left < d_right else [d_right, right_sub]
+
+    strip = [p for p in points if abs(p[0] - mid_point[0]) < d]
+    d_strip, strip_pair = strip_closest(strip=strip, d=d)
+    return (d_strip, strip_pair) if strip_pair else (d, min_pair)
+\end{lstlisting}
+
+\newpage
+
+\textbf{Empirical Results and Performance Graph:}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{images/closest_pair_tc_analysis.png}
+\caption{Closest Pair of Points Performance: (Left) Linear Scale highlighting the steep quadratic explosion of the Brute Force algorithm; (Right) Log-Log Scale confirming the asymptotic separation between $O(N^2)$ and Divide \& Conquer $O(N \log^2 N)$.}
+\end{figure}
+
+\textbf{Benchmark Execution Table:}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|r|r|r|r|r|c|}
+\hline
+\textbf{Points ($N$)} & \textbf{Brute Force (ms)} & \textbf{DAC (ms)} & \textbf{Empirical Speedup} & \textbf{Minimum Distance} & \textbf{Match} \\
+\hline
+10   & 0.0281 & 0.0220 & 1.28$\times$  & 5389.2505 & Yes \\
+50   & 0.2106 & 0.0633 & 3.33$\times$  & 1024.4750 & Yes \\
+100  & 0.8677 & 0.1754 & 4.95$\times$  & 948.6506  & Yes \\
+200  & 3.4544 & 0.3025 & 11.42$\times$ & 207.8942  & Yes \\
+500  & 21.4923 & 0.7649 & 28.10$\times$ & 276.9260  & Yes \\
+1000 & 81.5439 & 1.6275 & \textbf{50.10$\times$} & 76.0263 & Yes \\
+\hline
+\end{tabular}
+\caption{Empirical timing evaluation for Closest Pair of Points over random 2D coordinate sets.}
+\end{table}
+
+\textbf{Program Terminal Output:}
+\begin{lstlisting}
+=====================================================================================
+      CLOSEST PAIR OF POINTS: BRUTE FORCE vs. DIVIDE AND CONQUER (DAC)
+=====================================================================================
+Size (N)   | Brute Force (ms)   | DAC (ms)       | Speedup      | Min Distance   | Match
+-------------------------------------------------------------------------------------
+10         | 0.0281             | 0.0220         | 1.28x        | 5389.2505      | Yes
+50         | 0.2106             | 0.0633         | 3.33x        | 1024.4750      | Yes
+100        | 0.8677             | 0.1754         | 4.95x        | 948.6506       | Yes
+200        | 3.4544             | 0.3025         | 11.42x       | 207.8942       | Yes
+500        | 21.4923            | 0.7649         | 28.10x       | 276.9260       | Yes
+1000       | 81.5439            | 1.6275         | 50.10x       | 76.0263        | Yes
+=====================================================================================
+[Plot Saved] Figure saved to: images/closest_pair_tc_analysis.png
+\end{lstlisting}
+
+\vspace{0.3cm}
+\textbf{Theoretical Complexity Analysis:}
+\begin{enumerate}
+    \item \textbf{Brute-Force Complexity}: The exhaustive approach calculates the Euclidean distance between all $\binom{n}{2} = \frac{n(n-1)}{2}$ candidate point pairs. Hence, its time complexity is strictly $\mathbf{\Theta(n^2)}$ with $O(1)$ auxiliary space.
+    \item \textbf{Divide and Conquer Recurrence}:
+    \begin{itemize}
+        \item \textbf{Divide}: Sort points by $x$-coordinate once ($O(n \log n)$) and partition by median $x_{\text{mid}}$ into two halves of size $n/2$.
+        \item \textbf{Conquer}: Recursively compute the closest pairs in both halves: $\delta = \min(d_L, d_R)$.
+        \item \textbf{Combine (Strip Scan)}: Form a vertical strip of points whose $x$-distance from $x_{\text{mid}}$ is $< \delta$.
+        \item \textbf{Geometric Sparsity Property}: In the strip sorted by $y$-coordinate, for every point $p$, we only need to inspect subsequent points within vertical distance $\delta$. By the Pigeonhole Principle, at most \textbf{6 to 7 points} can reside in a $\delta \times 2\delta$ rectangle without having mutual distance $< \delta$. Consequently, the inner loop executes at most a constant number of iterations per point.
+    \end{itemize}
+    The recurrence relation when sorting the strip at each level is:
+    \[
+    T(n) = 2T(n/2) + O(n \log n)
+    \]
+    By the Master Theorem (Case 2 with logarithmic factor), this solves to $\mathbf{O(n \log^2 n)}$. When pre-sorting by $y$ or merging sorted lists along the recursion tree, the combine step takes $O(n)$, giving $T(n) = 2T(n/2) + O(n) = \mathbf{\Theta(n \log n)}$.
+    \item \textbf{Empirical Synthesis}: The experimental results show rapid divergence: at $N = 1000$, Brute Force requires $81.54\text{ ms}$ while DAC requires only $1.63\text{ ms}$, achieving a \textbf{50.1$\times$ speedup}.
+\end{enumerate}
+
+\newpage
+
+% ==============================================================================
+% PROBLEM 2 & 3: 1M VECTOR DATASET & LINUX HIGH-RESOLUTION TIMING
+% ==============================================================================
+\begin{center}
+\textbf{Problems 2 \& 3: 1,000,000-Element Vector Deduplication and Linux Timing Utilities}
+\end{center}
+
+\textbf{Problem Statement (Assignments 2 \& 3)}:
+\begin{itemize}
+    \item Create a dataset consisting of a vector of at least 1,000,000 positive integers using POSIX random functions \texttt{srand48()}, \texttt{lrand48()}, and/or \texttt{nrand48()}.
+    \item Write a function to print duplicate statistics (count, multiplicity).
+    \item Write another function to round off duplicates to the nearest free integral positive value ($> 0$).
+    \item Measure the time required to remove/resolve duplicates using multiple Linux timing approaches.
+    \item Discuss timing approaches in Linux and identify the approach with the \textbf{finest resolution}.
+    \item \textbf{Assignment 3 Extension}: Output execution time with high-fidelity \textbf{microsecond ($\mu\text{s}$)} resolution and explain the architectural approach devised.
+\end{itemize}
+
+\vspace{0.2cm}
+\textbf{C++ Code (\texttt{src/lab\_5/q2.cpp}):}
+
+\begin{lstlisting}[language=C++]
+#include <iostream>
+#include <vector>
+#include <unordered_set>
+#include <unordered_map>
+#include <iomanip>
+#include <cstdlib>
+#include <ctime>       // clock(), clock_gettime(), clock_getres()
+#include <sys/time.h>  // gettimeofday()
+#include <chrono>      // std::chrono
+
+std::vector<long> generate_dataset(size_t n, long max_val = 1500000, long seed = 42) {
+    srand48(seed);
+    std::vector<long> dataset;
+    dataset.reserve(n);
+    for (size_t i = 0; i < n; ++i) {
+        long val = (lrand48() % max_val) + 1; // Strictly positive (> 0)
+        dataset.push_back(val);
+    }
+    return dataset;
+}
+
+size_t print_duplicates(const std::vector<long>& vec) {
+    std::unordered_map<long, size_t> freq_map;
+    freq_map.reserve(vec.size());
+    for (long val : vec) freq_map[val]++;
+
+    size_t unique_values = freq_map.size(), duplicates = 0, with_dups = 0;
+    for (const auto& [val, count] : freq_map) {
+        if (count > 1) { with_dups++; duplicates += (count - 1); }
+    }
+    std::cout << "  Total Elements: " << vec.size() << " | Unique: " << unique_values 
+              << " | Redundant Duplicates: " << duplicates << std::endl;
+    return duplicates;
+}
+
+size_t resolve_duplicates_nearest_free(std::vector<long>& vec) {
+    std::unordered_set<long> occupied;
+    occupied.reserve(vec.size() * 2);
+    size_t resolved_count = 0;
+
+    for (size_t i = 0; i < vec.size(); ++i) {
+        long current = vec[i];
+        if (occupied.find(current) == occupied.end()) {
+            occupied.insert(current);
+        } else {
+            resolved_count++;
+            long delta = 1, candidate = -1;
+            while (true) {
+                long lower = current - delta;
+                if (lower > 0 && occupied.find(lower) == occupied.end()) {
+                    candidate = lower; break;
+                }
+                long upper = current + delta;
+                if (occupied.find(upper) == occupied.end()) {
+                    candidate = upper; break;
+                }
+                delta++;
+            }
+            occupied.insert(candidate);
+            vec[i] = candidate;
+        }
+    }
+    return resolved_count;
+}
+\end{lstlisting}
+
+\newpage
+
+\textbf{Program Terminal Execution Output (1 Million Vector Dataset):}
+
+\begin{lstlisting}
+=====================================================================================
+      DAA LAB 5 - PROBLEM 2: 1M VECTOR DATASET, DUPLICATE RESOLUTION & LINUX TIMING  
+=====================================================================================
+
+[Step 1: Dataset Generation]
+  Target Size (N)     : 1000000 entries
+  Value Range         : [1, 1500000]
+  RNG Functions Used  : srand48(42) and lrand48()
+  Status              : Successfully generated 1000000 positive integers.
+
+[Step 2: Initial Duplicate Audit]
+----------------------------------------------------------------------
+                      DUPLICATE AUDIT REPORT                          
+----------------------------------------------------------------------
+  Total Vector Elements        : 1000000
+  Unique Distinct Values       : 730358
+  Distinct Values w/ Duplicates: 216309
+  Total Redundant Duplicates   : 269642 (26.96% of dataset)
+  Highest Multiplicity Element : Value 553952 (appeared 8 times)
+----------------------------------------------------------------------
+
+[Step 3 & 4: Executing Timed Duplicate Resolution]
+  Resolving duplicates to nearest free positive integers...
+  [System Info] CLOCK_MONOTONIC reported resolution: 0s 1ns
+
+================================================================================================
+            LINUX TIMING UTILITIES COMPARISON (MICROSECONDS [us] & MILLISECONDS [ms])           
+================================================================================================
+Timing Approach / Function      Reported Value    Time (us)         Time (ms)       Theoretical Res.
+------------------------------------------------------------------------------------------------
+1. clock() [<ctime>]            179945 ticks      179945.00         179.9450        ~1 - 10 ms      
+2. gettimeofday() [<sys/time.h>]194944 us         194944.00         194.9440        1 us            
+3. clock_gettime() [MONOTONIC]* 194943595 ns      194943.60         194.9436        1 ns (FINEST)   
+4. std::chrono::high_resolution 194938396 ns      194938.40         194.9384        1 ns            
+================================================================================================
+* clock_gettime(CLOCK_MONOTONIC) is the recommended POSIX mechanism: provides true sub-microsecond
+  resolution (1 nanosecond), eliminating integer quantization truncation.
+
+[Assignment 3 Requirement: Elapsed Time in Microseconds]
+  Primary Measurement (clock_gettime) : 194943.595 us (194.9436 ms)
+  C++11 Chrono (std::chrono)          : 194938.396 us
+  POSIX Native (gettimeofday)         : 194944.00 us
+  Duplicates relocated to nearest free: 333153
+
+[Verification: Post-Deduplication Audit]
+----------------------------------------------------------------------
+                      DUPLICATE AUDIT REPORT                          
+----------------------------------------------------------------------
+  Total Vector Elements        : 1000000
+  Unique Distinct Values       : 1000000
+  Distinct Values w/ Duplicates: 0
+  Total Redundant Duplicates   : 0 (0.00% of dataset)
+  Integrity Check              : All entries are strictly unique (0 duplicates).
+----------------------------------------------------------------------
+[SUCCESS] Verification passed: Dataset contains exactly 1000000 unique positive integers.
+\end{lstlisting}
+
+\newpage
+
+\textbf{Theoretical Discussion: Linux Timing Mechanisms and Resolution Analysis}
+
+\begin{table}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|c|c|c|p{6.5cm}|}
+\hline
+\textbf{Timing Mechanism} & \textbf{Header} & \textbf{Units} & \textbf{Resolution} & \textbf{Operational Characteristics \& Limitations} \\
+\hline
+\texttt{clock()} & \texttt{<ctime>} & CPU Ticks & $\sim 1\text{--}10\text{ ms}$ & Measures process CPU time (user + system). Ignores I/O and sleep; aggregates multi-core threads; wraps every 72 mins on 32-bit. \\
+\hline
+\texttt{gettimeofday()} & \texttt{<sys/time.h>} & Seconds, $\mu\text{s}$ & $1\text{ }\mu\text{s}$ & Wall-clock calendar time. Non-monotonic (vulnerable to NTP skew and manual clock shifts). Deprecated in POSIX.1-2008. \\
+\hline
+\textbf{\texttt{clock\_gettime()}} & \texttt{<ctime>} & Seconds, $\text{ns}$ & $\mathbf{1\text{ ns}}$ & \textbf{Finest POSIX resolution}. Monotonically increasing; backed by hardware TSC register via Linux vDSO fast path. \\
+\hline
+\texttt{std::chrono} & \texttt{<chrono>} & Type-safe $\text{ns}$ & $\mathbf{1\text{ ns}}$ & Modern C++ wrapper around \texttt{clock\_gettime(CLOCK\_MONOTONIC)}. Zero-cost abstraction. \\
+\hline
+\end{tabular}%
+}
+\caption{Comprehensive taxonomy of Linux software timing mechanisms.}
+\end{table}
+
+\textbf{1. Resolving Time in Microseconds (Assignment 3):}
+\begin{itemize}
+    \item \textbf{Direct Microsecond Extraction}: Although \texttt{gettimeofday()} natively returns \texttt{struct timeval} (containing \texttt{tv\_sec} and \texttt{tv\_usec}), it is susceptible to non-monotonic clock jumps.
+    \item \textbf{Optimal High-Fidelity Approach}: The devised solution queries \texttt{clock\_gettime(CLOCK\_MONOTONIC, \&ts)}, which provides a 64-bit nanosecond timestamp. Converting nanoseconds to fractional microseconds:
+    \[
+    t_{\mu\text{s}} = \frac{\Delta t_{\text{sec}} \times 10^9 + \Delta t_{\text{nsec}}}{1000.0}
+    \]
+    This yields true sub-microsecond precision ($194,943.595\text{ }\mu\text{s}$), completely eliminating truncation errors while guaranteeing absolute monotonicity.
+\end{itemize}
+
+\textbf{2. Linux External Profiling Utilities:}
+\begin{itemize}
+    \item \textbf{\texttt{/usr/bin/time -v ./executable}}: Runs externally to inspect process resource metrics without modifying code. Reports:
+    \begin{itemize}
+        \item User CPU time, System kernel CPU time, and Elapsed Wall Clock time.
+        \item Peak Resident Set Size (RSS) memory utilization ($\approx 128\text{ MB}$ for $10^6$ elements).
+        \item Major (I/O) and Minor (page allocation) page faults, voluntary/involuntary context switches.
+    \end{itemize}
+    \item \textbf{\texttt{perf stat ./executable}} (Linux Kernel Subsystem): Uses hardware performance monitoring counters (PMCs) to report hardware CPU cycles, Instructions Per Cycle (IPC), L1/L3 cache misses, and branch mispredictions.
+\end{itemize}
+
+\textbf{3. Algorithmic Complexity of Deduplication}:
+\begin{itemize}
+    \item \textbf{Duplicate Detection}: Single pass with hash table frequency counts runs in $\Theta(N)$ time and $O(N)$ auxiliary space.
+    \item \textbf{Nearest Free Integer Resolution}: For each duplicate, candidate offsets $\Delta = 1, 2, 3, \dots$ are checked sequentially below and above ($x - \Delta, x + \Delta$). Because the hash set has average $O(1)$ lookup, and the density of free integers around $x$ is high (value range $[1, 1.5 \times 10^6]$ for $10^6$ elements), the expected number of probes per duplicate is bounded by a small constant. Hence, total deduplication runs in \textbf{expected $O(N)$ time} ($194.94\text{ ms}$ for 1M items).
+\end{itemize}
+
+\newpage
+
+% ==============================================================================
+% PROBLEM 4: K-TH ELEMENT SELECTION
+% ==============================================================================
+\begin{center}
+\textbf{Problem 4: K-th Order Statistic Selection -- Full Sort vs. Priority Queue vs. Quickselect}
+\end{center}
+
+\textbf{Problem Statement (Assignment 4)}:
+Given an unsorted array \texttt{arr[]} and an index $i$, find the element that would be at index $i$ if the array were sorted.
+\begin{enumerate}
+    \item Can you use a priority queue to solve this problem? If yes, write the algorithm, implement the solution, and analyze its time complexity. Explain why the priority queue approach tends to have higher complexity when the index is closer to $n$.
+    \item Alternatively, can you use the partition routine from the Quicksort algorithm (Quickselect) to solve the same problem more efficiently? Write the algorithm, implement it, and analyze its time complexity.
+    \item Compare the three algorithms (Full Sorting, Priority Queue, Quickselect) based on time complexity.
+\end{enumerate}
+
+\vspace{0.2cm}
+\textbf{Code (\texttt{src/lab\_5/kth\_element.py}):}
+
+\begin{lstlisting}[language=Python]
+import heapq, random, time
+
+def sorting_selection(arr: list[int], target_index: int) -> int:
+    return sorted(arr)[target_index]
+
+def priority_queue_selection(arr: list[int], target_index: int) -> int:
+    min_heap = arr.copy()
+    heapq.heapify(min_heap)            # O(n) Floyd's heap construction
+    for _ in range(target_index):      # i extractions
+        heapq.heappop(min_heap)        # O(log n) per pop
+    return min_heap[0]
+
+def partition(arr: list[int], low: int, high: int) -> int:
+    pivot_index = random.randint(low, high)
+    arr[pivot_index], arr[high] = arr[high], arr[pivot_index]
+    pivot_value = arr[high]
+    store_index = low
+    for scan_index in range(low, high):
+        if arr[scan_index] <= pivot_value:
+            arr[store_index], arr[scan_index] = arr[scan_index], arr[store_index]
+            store_index += 1
+    arr[store_index], arr[high] = arr[high], arr[store_index]
+    return store_index
+
+def quickselect(arr: list[int], target_index: int) -> int:
+    elements = arr.copy()
+    low, high = 0, len(elements) - 1
+    while low <= high:
+        pivot_pos = partition(elements, low, high)
+        if pivot_pos == target_index:
+            return elements[pivot_pos]
+        elif pivot_pos < target_index:
+            low = pivot_pos + 1
+        else:
+            high = pivot_pos - 1
+    return elements[target_index]
+\end{lstlisting}
+
+\newpage
+
+\textbf{Empirical Results and Performance Graph:}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{images/kth_element_tc_analysis.png}
+\caption{K-th Order Statistic Selection Benchmark: (Left) Linear Scale comparing Full Sort, Min-Heap Priority Queue, and Quickselect across varying array sizes; (Right) Log-Log Scale displaying the asymptotic scaling trajectories.}
+\end{figure}
+
+\textbf{Benchmark Tables:}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|r|r|r|r|r|c|}
+\hline
+\textbf{Size ($N$)} & \textbf{Index ($i = N/2$)} & \textbf{Full Sort (ms)} & \textbf{Priority Queue (ms)} & \textbf{Quickselect (ms)} & \textbf{Match} \\
+\hline
+10   & 5   & 0.0003 & 0.0006 & 0.0024 & Yes \\
+50   & 25  & 0.0006 & 0.0019 & 0.0056 & Yes \\
+100  & 50  & 0.0014 & 0.0041 & 0.0115 & Yes \\
+200  & 100 & 0.0035 & 0.0093 & 0.0208 & Yes \\
+500  & 250 & 0.0105 & 0.0247 & 0.0547 & Yes \\
+1000 & 500 & 0.0234 & 0.0592 & 0.1525 & Yes \\
+\hline
+\end{tabular}
+\caption{Benchmark across array sizes with median target index ($i = \lfloor N/2 \rfloor$).}
+\end{table}
+
+\textbf{Priority Queue Index Sensitivity Experiment ($N = 1000$):}
+\begin{table}[H]
+\centering
+\begin{tabular}{|r|r|r|p{8cm}|}
+\hline
+\textbf{Target Index ($i$)} & \textbf{Percentage of $N$} & \textbf{PQ Time (ms)} & \textbf{Complexity Behavior} \\
+\hline
+$i = 0$   & 0.0\%   & \textbf{0.0127} & $O(N + 0 \log N) \approx O(N)$: Immediate heap minimum. \\
+$i = 250$ & 25.0\%  & \textbf{0.0360} & Linear rise: 250 extraction heap reorganizations. \\
+$i = 500$ & 50.1\%  & \textbf{0.0593} & $O(N + \frac{N}{2} \log N)$: Significant logarithmic extraction cost. \\
+$i = 750$ & 75.1\%  & \textbf{0.0806} & Continued degradation as $i$ approaches array end. \\
+$i = 999$ & 100.0\% & \textbf{0.1108} & $\mathbf{8.7\times}$ slower than $i = 0$: Degrades to full $O(N \log N)$ heap sort! \\
+\hline
+\end{tabular}
+\caption{Empirical verification of Priority Queue index sensitivity on a fixed array of size $N = 1000$.}
+\end{table}
+
+\newpage
+
+\textbf{Theoretical Complexity Analysis and Comparative Synthesis:}
+
+\begin{table}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|c|c|c|c|p{4cm}|}
+\hline
+\textbf{Algorithm} & \textbf{Best Time} & \textbf{Average Time} & \textbf{Worst Time} & \textbf{Space} & \textbf{Algorithmic Behavior} \\
+\hline
+\textbf{Full Sorting} & $O(n \log n)$ & $\Theta(n \log n)$ & $O(n \log n)$ & $O(n)$ & Over-computes: sorts entire array even though only 1 element is required. \\
+\hline
+\textbf{Priority Queue (Min-Heap)} & $\Theta(n)$ & $\mathbf{\Theta(n + i \log n)}$ & $O(n \log n)$ & $O(n)$ & Excellent for small $i$; degrades as $i \to n$. \\
+\hline
+\textbf{Quickselect (Randomized)} & $\Theta(n)$ & $\mathbf{\Theta(n)}$ & $O(n^2)$ & $\mathbf{O(1)}$ & Prune-and-search; optimal linear expected time and strictly in-place. \\
+\hline
+\end{tabular}%
+}
+\caption{Comparative evaluation of K-th Order Statistic Selection algorithms.}
+\end{table}
+
+\textbf{1. Why Priority Queue Complexity Increases as Index $i \to n$}:
+\begin{itemize}
+    \item \textbf{Heap Construction}: Building a Min-Heap of $n$ elements using Floyd's algorithm (\texttt{heapify}) takes strictly linear time:
+    \[
+    \sum_{h=0}^{\lfloor \log_2 n \rfloor} \left\lceil \frac{n}{2^{h+1}} \right\rceil O(h) = O(n)
+    \]
+    \item \textbf{Extraction Phase}: To locate the element at index $i$, the algorithm performs $i$ successive \texttt{heappop()} operations. Each pop restores the heap invariant in $O(\log n)$ time. Total extraction cost is:
+    \[
+    T_{\text{extract}} = \sum_{k=1}^i O(\log(n - k)) = \Theta(i \log n)
+    \]
+    \item \textbf{Asymptotic Boundaries}:
+    \begin{itemize}
+        \item When $i = O(1)$ (e.g., minimum or 3rd smallest): $T(n) = O(n) + O(1 \cdot \log n) = \mathbf{O(n)}$.
+        \item When $i \to n$ (e.g., maximum or $n - 1$): $T(n) = O(n) + O(n \log n) = \mathbf{\Theta(n \log n)}$, which degrades to the exact complexity of full Heapsort!
+    \end{itemize}
+    \item \textit{Optimization note}: If $i > n/2$, one can alternatively use a Max-Heap or negate elements to extract $(n - 1 - i)$ elements from the top, achieving $O(n + \min(i, n - i) \log n)$.
+\end{itemize}
+
+\textbf{2. Quickselect Mathematical Recurrence}:
+Unlike Quicksort which recurses into \textbf{both} partitions ($T(n) = 2T(n/2) + O(n) = O(n \log n)$), Quickselect discards the subarray that cannot contain target index $i$:
+\[
+T(n) = T(n/2) + cn
+\]
+Expanding the recurrence:
+\[
+T(n) = cn + c\frac{n}{2} + c\frac{n}{4} + c\frac{n}{8} + \dots \le cn \sum_{k=0}^\infty \left(\frac{1}{2}\right)^k = 2cn = \mathbf{\Theta(n)}
+\]
+By using randomized pivot selection, bad splits ($O(n^2)$ worst case) occur with negligible probability, ensuring robust average-case $\Theta(n)$ performance with $O(1)$ auxiliary memory in iterative form.
+
+\newpage
+
+% ==============================================================================
+% PROBLEM 5: CODE SNIPPETS EXECUTION COST & ASYMPTOTIC ANALYSIS
+% ==============================================================================
+\begin{center}
+\textbf{Problem 5: Asymptotic \& Empirical Cost Analysis of Nested Loop Constructs}
+\end{center}
+
+\textbf{Problem Statement (Assignment 5)}:
+Find the cost of execution of the following code snippets by writing an appropriate timing program, and compare with the asymptotic values obtained in class:
+
+\textbf{(a) Code 1}:
+\begin{lstlisting}[language=C]
+for (i = 1; i <= n; i++)
+    for (j = 1; j <= i; j++)
+        x = x + 1;
+\end{lstlisting}
+
+\textbf{(b) Code 2}:
+\begin{lstlisting}[language=C]
+j = n;
+while (j >= 1) {
+    for (i = 1; i <= j; i++)
+        x = x + 1;
+    j = n / 2; // Intended algorithmic halving: j = j / 2;
+}
+\end{lstlisting}
+
+\textbf{(c) Code 3}:
+\begin{lstlisting}[language=C]
+for (i = 1; i <= n; i++)
+    for (j = 1; j <= i; j++)
+        for (k = 1; k <= i; k++)
+            x = x + 1;
+\end{lstlisting}
+
+\textbf{(d) Code 4}:
+\begin{lstlisting}[language=C]
+i = n;
+while (i >= 1) {
+    for (j = 1; j <= n; j++)
+        x = x + 1;
+    i = i / 2;
+}
+\end{lstlisting}
+
+\vspace{0.2cm}
+\textbf{Empirical Results and Performance Graph:}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{images/q5_tc_analysis.png}
+\caption{Assignment 5 Empirical Evaluation: (Left) Execution time curves on a Log-Log scale; (Right) Operation counts confirming exact alignment with theoretical formulas.}
+\end{figure}
+
+\newpage
+
+\textbf{Benchmark Execution Table (\texttt{src/lab\_5/q5.py}):}
+
+\begin{table}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|r|rr|rr|rr|rr|c|}
+\hline
+& \multicolumn{2}{c|}{\textbf{Code 1: $\Theta(n^2)$}} & \multicolumn{2}{c|}{\textbf{Code 2: $\Theta(n)$}} & \multicolumn{2}{c|}{\textbf{Code 3: $\Theta(n^3)$}} & \multicolumn{2}{c|}{\textbf{Code 4: $\Theta(n \log n)$}} & \\
+\textbf{$N$} & \textbf{Time (ms)} & \textbf{Count $x_1$} & \textbf{Time (ms)} & \textbf{Count $x_2$} & \textbf{Time (ms)} & \textbf{Count $x_3$} & \textbf{Time (ms)} & \textbf{Count $x_4$} & \textbf{Match} \\
+\hline
+10  & 0.0012 & 55      & 0.0005 & 18  & 0.0062   & 385         & 0.0007 & 40    & Yes \\
+25  & 0.0041 & 325     & 0.0008 & 47  & 0.0905   & 5525        & 0.0013 & 125   & Yes \\
+50  & 0.0161 & 1275    & 0.0012 & 97  & 0.6127   & 42925       & 0.0029 & 300   & Yes \\
+100 & 0.0702 & 5050    & 0.0022 & 197 & 4.4258   & 338350      & 0.0078 & 700   & Yes \\
+150 & 0.1465 & 11325   & 0.0030 & 296 & 14.4542  & 1136275     & 0.0138 & 1200  & Yes \\
+200 & 0.2699 & 20100   & 0.0041 & 397 & 34.3736  & 2686700     & 0.0225 & 1600  & Yes \\
+300 & 0.5843 & 45150   & 0.0071 & 596 & 116.1649 & 9045050     & 0.0338 & 2700  & Yes \\
+400 & 1.0762 & 80200   & 0.0097 & 797 & 291.9134 & 21413400    & 0.0503 & 3600  & Yes \\
+\hline
+\end{tabular}%
+}
+\caption{Empirical wall-clock time and increment counts across varying problem sizes $N$.}
+\end{table}
+
+\textbf{Mathematical Derivations and Complexity Proofs:}
+
+\textbf{1. Code 1 Derivation}:
+\[
+\text{Cost}_1(n) = \sum_{i=1}^n \sum_{j=1}^i 1 = \sum_{i=1}^n i = \frac{n(n + 1)}{2} = \frac{1}{2}n^2 + \frac{1}{2}n = \mathbf{\Theta(n^2)}
+\]
+\textit{Verification}: For $n = 400$, theoretical formula gives $\frac{400 \times 401}{2} = 80,200$, matching the empirical counter exactly.
+
+\textbf{2. Code 2 Derivation}:
+\begin{itemize}
+    \item \textbf{Literal Syntax Analysis}: The snippet as written contains \texttt{j = n / 2} inside the loop. For $n \ge 2$, $j$ remains stuck at $\lfloor n/2 \rfloor \ge 1$ after the first iteration, creating an infinite loop.
+    \item \textbf{Intended Algorithm}: The halving assignment \texttt{j = j / 2} divides $j$ by 2 at each step:
+    \[
+    \text{Cost}_2(n) = \sum_{k=0}^{\lfloor \log_2 n \rfloor} \left\lfloor \frac{n}{2^k} \right\rfloor \le n \sum_{k=0}^\infty 2^{-k} = 2n = \mathbf{\Theta(n)}
+    \]
+    \textit{Verification}: For $n = 400$, the operation count is $400 + 200 + 100 + 50 + 25 + 12 + 6 + 3 + 1 = 797$, perfectly verifying $\Theta(n)$ linear scaling.
+\end{itemize}
+
+\textbf{3. Code 3 Derivation}:
+Notice that both the $j$-loop and the $k$-loop run from $1$ up to $i$:
+\[
+\text{Cost}_3(n) = \sum_{i=1}^n \left( \sum_{j=1}^i 1 \right) \left( \sum_{k=1}^i 1 \right) = \sum_{i=1}^n i^2 = \frac{n(n + 1)(2n + 1)}{6} = \frac{1}{3}n^3 + \frac{1}{2}n^2 + \frac{1}{6}n = \mathbf{\Theta(n^3)}
+\]
+\textit{Verification}: For $n = 400$, $\frac{400 \times 401 \times 801}{6} = 21,413,400$, which matches our measured empirical operation count $21,413,400$ to the exact single digit!
+
+\textbf{4. Code 4 Derivation}:
+The outer while loop divides $i$ by 2 until $i < 1$, executing exactly $\lfloor \log_2 n \rfloor + 1$ times. The inner loop executes strictly $n$ times per outer step:
+\[
+\text{Cost}_4(n) = \sum_{k=0}^{\lfloor \log_2 n \rfloor} n = n (\lfloor \log_2 n \rfloor + 1) = \mathbf{\Theta(n \log n)}
+\]
+\textit{Verification}: For $n = 400$, $\lfloor \log_2 400 \rfloor + 1 = 8 + 1 = 9$. Total operations $= 9 \times 400 = 3,600$, identical to empirical measurement.
+
+\newpage
+
+% ==============================================================================
+% PROBLEM 6: KARATSUBA LARGE INTEGER MULTIPLICATION
+% ==============================================================================
+\begin{center}
+\textbf{Problem 6: Karatsuba Divide and Conquer Large Integer Multiplication}
+\end{center}
+
+\textbf{Problem Statement (Assignment 6)}:
+Implement large integer multiplication using the Karatsuba Divide and Conquer algorithm.
+\begin{itemize}
+    \item Implement conventional (grade-school) multiplication.
+    \item Implement Karatsuba multiplication.
+    \item Test with integers having increasing numbers of digits ($N \in \{16, 32, 64, 128, 256, 512, 1024\}$).
+    \item Measure execution time.
+    \item Compare empirical performance of both methods and analyze theoretical complexity.
+\end{itemize}
+
+\vspace{0.2cm}
+\textbf{Code (\texttt{src/lab\_5/karatsuba.py}):}
+
+\begin{lstlisting}[language=Python]
+def conventional_multiply(x: int, y: int) -> int:
+    if x == 0 or y == 0: return 0
+    sign = -1 if (x < 0) ^ (y < 0) else 1
+    s1, s2 = str(abs(x)), str(abs(y))
+    n, m = len(s1), len(s2)
+    result = [0] * (n + m)
+
+    for i in range(n - 1, -1, -1):
+        d1 = ord(s1[i]) - 48
+        for j in range(m - 1, -1, -1):
+            d2 = ord(s2[j]) - 48
+            product = d1 * d2 + result[i + j + 1]
+            result[i + j + 1] = product % 10
+            result[i + j] += product // 10
+
+    res_val = 0
+    for digit in result:
+        res_val = res_val * 10 + digit
+    return sign * res_val
+
+def karatsuba(x: int, y: int) -> int:
+    if x < 0 and y < 0: return karatsuba(-x, -y)
+    elif x < 0: return -karatsuba(-x, y)
+    elif y < 0: return -karatsuba(x, -y)
+
+    # Base case: single-digit threshold
+    if x < 10 or y < 10:
+        return x * y
+
+    n = max(len(str(x)), len(str(y)))
+    m = n // 2
+    power_of_ten = 10 ** m
+
+    # Divide: split into high and low digits
+    a, b = divmod(x, power_of_ten)
+    c, d = divmod(y, power_of_ten)
+
+    # Conquer: 3 recursive calls instead of 4
+    z0 = karatsuba(b, d)
+    z2 = karatsuba(a, c)
+    z1 = karatsuba(a + b, c + d) - z2 - z0
+
+    # Combine: reconstruct product
+    return z2 * (10 ** (2 * m)) + z1 * power_of_ten + z0
+\end{lstlisting}
+
+\newpage
+
+\textbf{Empirical Results and Performance Graph:}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{images/karatsuba_tc_analysis.png}
+\caption{Large Integer Multiplication Benchmark: (Left) Linear Scale showcasing the divergence of Conventional $O(N^2)$ from Karatsuba; (Right) Log-Log Scale illustrating the asymptotic slopes of $N^2$ vs. $N^{1.585}$.}
+\end{figure}
+
+\textbf{Benchmark Execution Table:}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|r|r|r|r|c|}
+\hline
+\textbf{Digits ($N$)} & \textbf{Conventional (ms)} & \textbf{Karatsuba (ms)} & \textbf{Speedup} & \textbf{Verification Match} \\
+\hline
+16   & 0.0249   & 0.0233  & 1.07$\times$ & Yes \\
+32   & 0.0920   & 0.0774  & 1.19$\times$ & Yes \\
+64   & 0.3878   & 0.2290  & 1.69$\times$ & Yes \\
+128  & 1.4600   & 0.6563  & 2.22$\times$ & Yes \\
+256  & 6.3173   & 1.9305  & 3.27$\times$ & Yes \\
+512  & 29.6626  & 6.0449  & 4.91$\times$ & Yes \\
+1024 & 118.0055 & 18.2036 & \textbf{6.48$\times$} & Yes \\
+\hline
+\end{tabular}
+\caption{Multiplication benchmark comparing Conventional Grade-School vs. Karatsuba.}
+\end{table}
+
+\textbf{Program Terminal Output:}
+\begin{lstlisting}
+================================================================================================
+      LARGE INTEGER MULTIPLICATION: CONVENTIONAL vs. KARATSUBA (DIVIDE & CONQUER)
+================================================================================================
+Digits (N)   | Conventional (ms)    | Karatsuba (ms)   | Speedup      | Match
+------------------------------------------------------------------------------------------------
+16           | 0.0249               | 0.0233           | 1.07x        | Yes
+32           | 0.0920               | 0.0774           | 1.19x        | Yes
+64           | 0.3878               | 0.2290           | 1.69x        | Yes
+128          | 1.4600               | 0.6563           | 2.22x        | Yes
+256          | 6.3173               | 1.9305           | 3.27x        | Yes
+512          | 29.6626              | 6.0449           | 4.91x        | Yes
+1024         | 118.0055             | 18.2036          | 6.48x        | Yes
+================================================================================================
+[Plot Saved] Figure saved to: images/karatsuba_tc_analysis.png
+\end{lstlisting}
+
+\newpage
+
+\textbf{Theoretical Complexity Derivation (Master Theorem):}
+
+\textbf{1. Algorithmic Formulation}:
+Let $x$ and $y$ be $n$-digit integers. We split each number around $m = \lceil n/2 \rceil$:
+\[
+x = a \cdot 10^m + b, \quad y = c \cdot 10^m + d
+\]
+The full product is:
+\[
+x \cdot y = ac \cdot 10^{2m} + (ad + bc) \cdot 10^m + bd
+\]
+A naive divide and conquer strategy computes the four cross-products $ac, ad, bc, bd$, leading to $T(n) = 4T(n/2) + O(n) = O(n^{\log_2 4}) = O(n^2)$, which yields no asymptotic improvement over grade-school multiplication.
+
+\textbf{2. Karatsuba's Algebraic Reduction}:
+Anatoly Karatsuba (1960) observed that the cross-term $(ad + bc)$ can be determined using only \textbf{one} additional multiplication:
+\begin{align*}
+z_2 &= a \cdot c \\
+z_0 &= b \cdot d \\
+z_1 &= (a + b)(c + d) - z_2 - z_0 = ad + bc
+\end{align*}
+The overall product is reconstituted as:
+\[
+x \cdot y = z_2 \cdot 10^{2m} + z_1 \cdot 10^m + z_0
+\]
+
+\textbf{3. Master Theorem Solution}:
+The recurrence relation requires $a = 3$ subproblems of half size $n/2$, with $O(n)$ addition, subtraction, and power-of-10 shift operations:
+\[
+T(n) = 3 T(n/2) + \Theta(n)
+\]
+We compare $f(n) = \Theta(n)$ with the watershed function $n^{\log_b a}$:
+\[
+n^{\log_2 3} \approx n^{1.5849625}
+\]
+Since $f(n) = O(n^{\log_2 3 - \epsilon})$ for $\epsilon = \log_2 3 - 1 \approx 0.585 > 0$, \textbf{Case 1 of the Master Theorem} applies:
+\[
+T(n) = \mathbf{\Theta(n^{\log_2 3})} \approx \mathbf{\Theta(n^{1.585})}
+\]
+
+\textbf{4. Practical Considerations: Base 10 vs. Binary Word Variants}:
+\begin{itemize}
+    \item \textbf{Decimal Implementation}: In educational software, base 10 provides transparent step tracing. However, division and modulo by $10^m$ require arithmetic operations.
+    \item \textbf{Binary / Word Base ($2^W$)}: Real-world high-performance multi-precision libraries (GNU GMP, Python's \texttt{longobject.c}, OpenSSL) implement Karatsuba in base 2 or base $2^{32} / 2^{64}$. In binary, splitting $x = (a \ll m) + b$ is an instantaneous bit shift and mask ($O(1)$ pointer offset), while shifting by $2^{2m}$ is a simple memory-aligned bit shift.
+    \item \textbf{Hybrid Cut-off (Crossover Point)}: Because recursion and big-integer allocations carry constant overhead, production libraries use Grade-School multiplication for $n < 32\text{--}64$ words, switching to Karatsuba for larger numbers.
+\end{itemize}
+
+\end{document}

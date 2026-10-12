@@ -1,0 +1,731 @@
+\documentclass[12pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{newtxtext,newtxmath}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{xcolor}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+
+% Keep entire document at 12 pt
+\AtBeginDocument{
+    \fontsize{12pt}{14pt}\selectfont
+}
+
+% ------------------------------------------------
+% Header Configuration
+% ------------------------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Name: \underline{Shaik Jnaved}}
+\fancyhead[R]{Enrollment No.: \underline{P26DS001}}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{15pt}
+
+% ------------------------------------------------
+% Code Formatting Configuration
+% ------------------------------------------------
+\lstset{
+    basicstyle=\ttfamily\fontsize{8.5pt}{10.5pt}\selectfont,
+    breaklines=true,
+    frame=single,
+    columns=fullflexible,
+    keepspaces=true,
+    showstringspaces=false,
+    keywordstyle=\color{blue}\bfseries,
+    commentstyle=\color{gray}\itshape,
+    stringstyle=\color{teal}
+}
+
+\begin{document}
+
+% ==============================================================================
+% TITLE BANNER
+% ==============================================================================
+\begin{center}
+\textbf{\Large Computer Science and Engineering Department, SVNIT, Surat}\\[4pt]
+\textbf{\large M.Tech. I -- Semester I}\\[3pt]
+\textbf{\large Design and Analysis of Algorithm (CSDS103)}\\[4pt]
+\textbf{\Large Lab Assignment 7: String Matching Algorithms \& Empirical Analysis}
+\end{center}
+
+\vspace{0.2cm}
+\hrule
+\vspace{0.4cm}
+
+\textbf{Abstract}:\\
+String matching is a foundational algorithmic problem in computer science with applications ranging from text editors, web search engines, and network packet inspection to computational genomics and bioinformatics. Given a text string $T$ of length $n$ and a pattern string $P$ of length $m$ (with $m \le n$), the objective is to determine all valid shift positions $s \in \{0, 1, \dots, n-m\}$ such that $T[s \dots s+m-1] = P[0 \dots m-1]$. 
+
+This laboratory report presents an end-to-end mathematical, algorithmic, and empirical investigation of three canonical string matching algorithms:
+\begin{enumerate}
+    \item \textbf{Question 1: The Naive (Brute-Force) String Matching Approach}
+    \item \textbf{Question 2: The Knuth-Morris-Pratt (KMP) Linear-Time Algorithm}
+    \item \textbf{Question 3: The Rabin-Karp Rolling Hash Matching Algorithm}
+    \item \textbf{Question 4: Comprehensive Empirical Benchmark \& Performance Analysis}
+\end{enumerate}
+We evaluate the operational behavior, theoretical complexities, empirical execution times across variable input sizes and pattern lengths, and the actual number of character comparisons incurred by each method.
+
+\vspace{0.4cm}
+
+% ==============================================================================
+% QUESTION 1: NAIVE STRING MATCHING
+% ==============================================================================
+\section*{Question 1: Naive (Brute-Force) String Matching Approach}
+
+\subsection*{1.1 Problem Statement and Algorithmic Principle}
+The Naive string matching algorithm is the simplest approach to finding occurrences of pattern $P[0 \dots m-1]$ in text $T[0 \dots n-1]$. It operates by sliding a window of length $m$ over the text $T$, sequentially testing every possible starting position (shift) $s \in \{0, 1, \dots, n-m\}$.
+
+For each shift $s$:
+\begin{itemize}
+    \item It aligns $P[0]$ with $T[s]$ and compares characters $T[s+j]$ with $P[j]$ for $j = 0, 1, \dots, m-1$.
+    \item If a character mismatch is detected at index $j$ ($T[s+j] \ne P[j]$), the inner loop terminates immediately, the shift is declared invalid, and the search proceeds to shift $s+1$.
+    \item If all $m$ characters match successfully, the valid shift index $s$ is appended to the results list.
+\end{itemize}
+
+A fundamental limitation of the Naive algorithm is that it discards all historical character match information upon encountering a mismatch, often re-examining characters of $T$ that were already inspected during previous shifts.
+
+\subsection*{1.2 Python Implementation (\texttt{naive\_string\_match.py})}
+The source code implemented in \texttt{src/lab\_7/naive\_string\_match.py} is presented below:
+
+\begin{lstlisting}[language=Python]
+def search(text: str, pattern: str):
+    n = len(text)
+    m = len(pattern)
+    res = []
+
+    for i in range(n-m+1):
+        k = i
+        flag = True
+        for j in range(m):
+            if text[k] == pattern[j]:
+                j+=1
+                k+=1
+            else:
+                flag = False
+                break
+        
+        if flag:
+            res.append(i)
+    
+    return res
+
+
+def main(text: str, pattern: str):
+    search(text=text, pattern=pattern)
+
+
+if __name__ == "__main__":
+    text = "aabaacaadaabaaba"
+    pattern = "aaba"
+
+    res = search(text=text, pattern=pattern)
+    print(res)
+\end{lstlisting}
+
+\subsection*{1.3 Theoretical Complexity Analysis}
+\begin{itemize}
+    \item \textbf{Worst-Case Time Complexity $\mathcal{O}((n - m + 1) \cdot m) = \mathcal{O}(n \cdot m)$}:\\
+    Occurs when the pattern and text have extensive repetitions with mismatches occurring only at the very end of the pattern. For instance, if $T = \text{"aaaa...a"}$ ($n$ times 'a') and $P = \text{"aaaab"}$ ($m-1$ times 'a' followed by 'b'), every shift checks $m$ characters before failing, leading to $(n - m + 1) \cdot m$ total character comparisons.
+    
+    \item \textbf{Best-Case Time Complexity $\mathcal{O}(n - m + 1) = \mathcal{O}(n)$}:\\
+    Occurs when the very first character of the pattern never matches the text at any shift ($T[s] \ne P[0]$). Only 1 comparison is performed per shift, yielding exactly $n - m + 1$ comparisons.
+    
+    \item \textbf{Average-Case Time Complexity $\mathcal{O}(n)$}:\\
+    For random text over an alphabet of size $|\Sigma| = d$, the probability that two random characters match is $1/d$. The expected number of comparisons at each shift is a geometric series:
+    \[
+    \mathbb{E}[\text{comps per shift}] = \sum_{k=1}^{m} \left(\frac{1}{d}\right)^{k-1} \le \frac{d}{d-1} = \mathcal{O}(1)
+    \]
+    Thus, across all $n-m+1$ shifts, the expected number of comparisons is linear in $n$.
+    
+    \item \textbf{Auxiliary Space Complexity $\mathcal{O}(1)$}:\\
+    The algorithm requires only a few pointer variables ($i, j, k, n, m$) and no auxiliary data structures beyond storing the result indices.
+\end{itemize}
+
+\subsection*{1.4 Verification \& Sample Output}
+Running the sample execution on test text $T = \text{"aabaacaadaabaaba"}$ and pattern $P = \text{"aaba"}$:
+\begin{itemize}
+    \item Shift $s = 0$: $T[0\dots 3] = \text{"aaba"}$ matches $P$ $\implies$ record index $0$.
+    \item Shift $s = 9$: $T[9\dots 12] = \text{"aaba"}$ matches $P$ $\implies$ record index $9$.
+    \item Shift $s = 12$: $T[12\dots 15] = \text{"aaba"}$ matches $P$ $\implies$ record index $12$.
+\end{itemize}
+\textbf{Output}: \texttt{[0, 9, 12]}. Correctness verified.
+
+\vspace{0.4cm}
+
+% ==============================================================================
+% QUESTION 2: KMP ALGORITHM
+% ==============================================================================
+\section*{Question 2: Knuth-Morris-Pratt (KMP) Algorithm}
+
+\subsection*{2.1 Problem Statement and Algorithmic Principle}
+The Knuth-Morris-Pratt (KMP) algorithm achieves deterministic worst-case linear time $\Theta(n + m)$ by ensuring that the text pointer $i$ never moves backward (backtracks). It exploits the internal structure of the pattern itself through a precomputed \textbf{Longest Proper Prefix which is also a Suffix (LPS)} array, commonly referred to as the $\pi$ table.
+
+\textbf{1. LPS Array Definition}:
+For a pattern $P$ of length $m$, $\text{lps}[j]$ stores the length of the longest proper prefix of $P[0 \dots j]$ that is also a suffix of $P[0 \dots j]$. 
+\begin{itemize}
+    \item A \textit{proper prefix} of a string $S$ is a prefix that is not equal to $S$ itself.
+    \item $\text{lps}[0] = 0$ by definition.
+\end{itemize}
+
+\textbf{2. Preprocessing Phase ($\Theta(m)$)}:
+The LPS array is constructed iteratively using two pointers (\texttt{i} and \texttt{pattern\_length}). If $P[i] == P[\text{pattern\_length}]$, we increment \texttt{pattern\_length} and store it in $\text{lps}[i]$. If they mismatch and $\text{pattern\_length} > 0$, \texttt{pattern\_length} falls back to $\text{lps}[\text{pattern\_length}-1]$ without resetting to zero.
+
+\textbf{3. Search Phase ($\Theta(n)$)}:
+During matching, we maintain text index $i$ and pattern index $j$:
+\begin{itemize}
+    \item When $T[i] == P[j]$, both $i$ and $j$ advance.
+    \item If a complete match occurs ($j == m$), index $i - j$ is recorded as a match, and $j$ is updated to $\text{lps}[j-1]$ to find subsequent overlapping occurrences.
+    \item If a mismatch occurs after matching $j$ characters ($T[i] \ne P[j]$):
+    \begin{itemize}
+        \item If $j > 0$, we slide the pattern to align its longest matched prefix with the matched suffix of the text by setting $j = \text{lps}[j-1]$. Pointer $i$ remains unchanged!
+        \item If $j == 0$, no prefix could match, so we simply increment $i$.
+    \end{itemize}
+\end{itemize}
+
+\subsection*{2.2 Python Implementation (\texttt{kmp.py})}
+The source code implemented in \texttt{src/lab\_7/kmp.py} is presented below:
+
+\begin{lstlisting}[language=Python]
+def construct_lps(pattern: str, lps: list):
+    m = len(pattern)
+    pattern_length = 0
+
+    lps[0] = 0
+    i=1
+    while(i<m):
+        if pattern[i] == pattern[pattern_length]:
+            pattern_length += 1
+            lps[i] = pattern_length
+            i+=1
+        else:
+            if pattern_length != 0:
+                pattern_length = lps[pattern_length-1]
+            else:
+                lps[i] = 0
+                i+=1
+
+
+def search(text: str, pattern: str):
+    n = len(text)
+    m = len(pattern)
+
+    # lps -> longest proper prefix which is also a suffix
+    lps = [0]*m
+    res = []
+
+    construct_lps(pattern=pattern, lps=lps)
+    i, j = 0, 0
+
+    while(i<n):
+        if text[i] == pattern[j]:
+            i+=1
+            j+=1
+
+            if j==m:
+                res.append(i-j)
+                j = lps[j-1]
+        else:
+            if j!=0:
+                j = lps[j-1]
+            else:
+                i+=1
+    return res
+
+
+def main(text: str, pattern: str):
+    search(text=text, pattern=pattern)
+
+
+if __name__ == "__main__":
+    text = "aabaacaadaabaaba"
+    pattern = "aaba"
+    res = search(text=text, pattern=pattern)
+    print(res)
+\end{lstlisting}
+
+\subsection*{2.3 Theoretical Complexity Analysis}
+\begin{itemize}
+    \item \textbf{Preprocessing Time Complexity $\Theta(m)$}:\\
+    In \texttt{construct\_lps}, variable $i$ increments at each step when characters match or when $\text{pattern\_length} == 0$. The potential function $\Phi = \text{pattern\_length} \ge 0$ increases by 1 only when $i$ increases and strictly decreases during fallback. Thus, the total number of operations is bounded by $2m = \Theta(m)$.
+
+    \item \textbf{Search Time Complexity $\Theta(n)$}:\\
+    Similarly, in \texttt{search}, pointer $i$ strictly increases from $0$ to $n$. The pattern pointer $j$ increases at most $n$ times (once per match). Every fallback $j = \text{lps}[j-1]$ strictly decreases $j$ without decreasing $i$. Since $j \ge 0$, $j$ can decrease at most as many times as it increased. Hence, the while loop executes at most $2n$ times.
+
+    \item \textbf{Total Time Complexity $\Theta(n + m)$}:\\
+    The algorithm is strictly linear in all cases (best, average, and worst case), providing robust guarantees against pathological inputs.
+
+    \item \textbf{Auxiliary Space Complexity $\Theta(m)$}:\\
+    An auxiliary integer array of size $m$ is required to store the LPS table.
+\end{itemize}
+
+\subsection*{2.4 Verification \& Sample Output}
+For pattern $P = \text{"aaba"}$:
+\begin{itemize}
+    \item $P[0] = \text{'a'} \implies \text{lps}[0] = 0$.
+    \item $P[1] = \text{'a'} == P[0] \implies \text{lps}[1] = 1$.
+    \item $P[2] = \text{'b'} \ne P[1]$, fallback to $P[\text{lps}[0]] = P[0] = \text{'a'} \ne \text{'b'} \implies \text{lps}[2] = 0$.
+    \item $P[3] = \text{'a'} == P[0] \implies \text{lps}[3] = 1$.
+    \item LPS array: \texttt{[0, 1, 0, 1]}.
+\end{itemize}
+Searching on $T = \text{"aabaacaadaabaaba"}$ yields match indices: \texttt{[0, 9, 12]}. Correctness verified.
+
+\vspace{0.4cm}
+
+% ==============================================================================
+% QUESTION 3: RABIN-KARP ALGORITHM
+% ==============================================================================
+\section*{Question 3: Rabin-Karp String Matching Algorithm}
+
+\subsection*{3.1 Problem Statement and Algorithmic Principle}
+The Rabin-Karp algorithm introduces a hashing-based approach to string matching. Rather than performing character-by-character checks at every shift position, it associates numerical hash values with the pattern and with each window of text.
+
+\textbf{1. Rolling Hash Principle}:\\
+Treating strings over an alphabet as base-$d$ numbers (in our implementation, $d = 10$) modulo a selected prime $Q = 101$:
+\begin{itemize}
+    \item The pattern hash is:
+    \[
+    p = \left( \sum_{i=0}^{m-1} P[i] \cdot d^{m-1-i} \right) \bmod Q
+    \]
+    \item The hash of the initial text window $T[0 \dots m-1]$ is computed identically as $t_0$.
+\end{itemize}
+
+\textbf{2. $\mathcal{O}(1)$ Sliding Window Hash Update (Horner's Rule)}:\\
+When sliding the window from shift $s$ to $s+1$, the old high-order character $T[s]$ is subtracted, the hash is multiplied by base $d$, and the new incoming character $T[s+m]$ is added:
+\[
+t_{s+1} = \left( d \cdot (t_s - T[s] \cdot h) + T[s+m] \right) \bmod Q
+\]
+where $h = d^{m-1} \bmod Q$ is precalculated in $\mathcal{O}(\log m)$ using modular exponentiation. If the subtraction yields a negative result, $Q$ is added to restore modular positivity. This rolling update executes in $\mathcal{O}(1)$ arithmetic operations.
+
+\textbf{3. Spurious Hit Handling (Verification)}:\\
+If $t_s == p$, two possibilities exist:
+\begin{enumerate}
+    \item \textbf{True Match}: $T[s \dots s+m-1] == P$.
+    \item \textbf{Spurious Hit (Hash Collision)}: $t_s \equiv p \pmod Q$, but $T[s \dots s+m-1] \ne P$.
+\end{enumerate}
+To guarantee accuracy, whenever $t_s == p$, a character-by-character verification $T[s \dots s+m-1] == P$ is performed.
+
+\subsection*{3.2 Python Implementation (\texttt{rabin\_karp.py})}
+The source code implemented in \texttt{src/lab\_7/rabin\_karp.py} is presented below:
+
+\begin{lstlisting}[language=Python]
+Q = 101
+
+
+def search(text: str, pattern: str):
+    n = len(text)
+    m = len(pattern)
+
+    res = []
+    h = pow(10, m-1, Q)
+
+    p_hash, t_hash = 0, 0
+
+    # initial hash
+    for i in range(m):
+        p_hash = (10 * p_hash + ord(pattern[i])) % Q
+        t_hash = (10 * t_hash + ord(text[i])) % Q
+
+    for i in range(n-m+1):
+        if p_hash == t_hash:
+            if text[i: i+m] == pattern:
+                res.append(i)
+
+        if i < n-m:
+            t_hash = (10 * (t_hash - ord(text[i]) * h) + ord(text[i+m])) % Q
+            if t_hash < 0:
+                t_hash += Q
+
+    return res
+
+
+def main(text: str, pattern: str):
+    search(text=text, pattern=pattern)
+
+
+if __name__ == "__main__":
+    text = "aabaacaadaabaaba"
+    pattern = "aaba"
+    res = search(text=text, pattern=pattern)
+    print(res)
+\end{lstlisting}
+
+\subsection*{3.3 Theoretical Complexity Analysis}
+\begin{itemize}
+    \item \textbf{Preprocessing Time Complexity $\Theta(m)$}:\\
+    Computing $h = d^{m-1} \bmod Q$ and evaluating the initial hashes $p$ and $t_0$ takes $\Theta(m)$ arithmetic steps.
+
+    \item \textbf{Average / Best-Case Time Complexity $\mathcal{O}(n + m)$}:\\
+    If prime $Q$ is chosen sufficiently large relative to $m$, the probability of spurious hits is approximately $1/Q$. If the expected number of collisions is $\mathcal{O}(1)$, verification is triggered only $\mathcal{O}(1)$ times. Rolling hash updates take $\mathcal{O}(1)$ per shift for $n-m$ shifts, yielding total average time $\mathcal{O}(n + m)$.
+
+    \item \textbf{Worst-Case Time Complexity $\mathcal{O}((n - m + 1) \cdot m) = \mathcal{O}(n \cdot m)$}:\\
+    Occurs when every shift produces a hash collision ($t_s == p$) that fails during verification, or when the pattern occurs at every position. In this degenerate case, all $m$ characters are verified at every shift.
+
+    \item \textbf{Auxiliary Space Complexity $\mathcal{O}(1)$}:\\
+    Rabin-Karp requires only a constant number of integer variables ($p\_hash, t\_hash, h, Q$) for maintaining hash states.
+\end{itemize}
+
+\subsection*{3.4 Verification \& Sample Output}
+Running the algorithm on $T = \text{"aabaacaadaabaaba"}$ and $P = \text{"aaba"}$ with prime $Q = 101$:
+\begin{itemize}
+    \item Hash matches occur at shifts $0, 9, 12$ (verified as true matches).
+    \item Output: \texttt{[0, 9, 12]}. Correctness verified.
+\end{itemize}
+
+\vspace{0.4cm}
+
+% ==============================================================================
+% QUESTION 4: EMPIRICAL PERFORMANCE ANALYSIS
+% ==============================================================================
+\section*{Question 4: Experimental Performance Analysis \& Empirical Comparisons}
+
+\subsection*{4.1 Experimental Methodology and Setup}
+To provide a thorough empirical assessment, we developed a comprehensive benchmarking framework in \texttt{src/lab\_7/comparisions.py}. The testing environment and parameters are structured as follows:
+\begin{itemize}
+    \item \textbf{Alphabet}: Controlled alphabet $\Sigma = \{\text{'a'}, \text{'b'}, \text{'c'}, \text{'d'}\}$ ($|\Sigma| = 4$).
+    \item \textbf{Text Sizes}: $n \in \{500, 1000, 10000\}$ characters, randomly sampled with reproducible seeds.
+    \item \textbf{Pattern Lengths}: $m \in \{5, 10, 20\}$ characters, sliced directly from text to ensure valid matches exist.
+    \item \textbf{Timing Metric}: Measured using high-resolution \texttt{time.perf\_counter()}, with results averaged over multiple repetitions to eliminate OS thread-scheduling anomalies.
+    \item \textbf{Comparison Counter}: Dedicated character comparison functions tracking actual equality checks performed during execution.
+\end{itemize}
+
+\subsection*{4.2 Source Code (\texttt{comparisions.py})}
+The complete driver script implemented in \texttt{src/lab\_7/comparisions.py} is shown below:
+
+\begin{lstlisting}[language=Python]
+import time
+import random
+from pathlib import Path
+import matplotlib.pyplot as plt
+from naive_string_match import main as naive
+from kmp import main as kmp
+from rabin_karp import main as rk
+
+CURRENT_DIR = Path(__file__).resolve().parent
+IMAGES_DIR = CURRENT_DIR.parent.parent / "images"
+IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+
+def generate_random_text(length: int | str, alphabet: str = "abcd", seed: int | None = None) -> str:
+    rng = random.Random(seed) if seed is not None else random
+    return "".join(rng.choices(alphabet, k=int(length)))
+
+def generate_random_pattern(length: int | str, alphabet: str = "abcd", text: str | None = None, seed: int | None = None) -> str:
+    rng = random.Random(seed) if seed is not None else random
+    length = int(length)
+    if text is not None and len(text) >= length:
+        start_idx = rng.randint(0, len(text) - length)
+        return text[start_idx : start_idx + length]
+    return "".join(rng.choices(alphabet, k=length))
+
+def count_naive_comparisons(text: str, pattern: str) -> int:
+    n, m = len(text), len(pattern)
+    comps = 0
+    for i in range(n - m + 1):
+        k = i
+        for j in range(m):
+            comps += 1
+            if text[k] == pattern[j]:
+                k += 1
+            else:
+                break
+    return comps
+
+def count_kmp_comparisons(text: str, pattern: str) -> int:
+    m, n = len(pattern), len(text)
+    lps = [0] * m
+    pattern_length, i, comps = 0, 1, 0
+    while i < m:
+        comps += 1
+        if pattern[i] == pattern[pattern_length]:
+            pattern_length += 1
+            lps[i] = pattern_length
+            i += 1
+        else:
+            if pattern_length != 0:
+                pattern_length = lps[pattern_length - 1]
+            else:
+                lps[i] = 0
+                i += 1
+    i, j = 0, 0
+    while i < n:
+        comps += 1
+        if text[i] == pattern[j]:
+            i += 1
+            j += 1
+            if j == m:
+                j = lps[j - 1]
+        else:
+            if j != 0:
+                j = lps[j - 1]
+            else:
+                i += 1
+    return comps
+
+def count_rk_comparisons(text: str, pattern: str, Q: int = 101) -> int:
+    n, m = len(text), len(pattern)
+    h = pow(10, m - 1, Q)
+    p_hash, t_hash, comps = 0, 0, 0
+    for i in range(m):
+        p_hash = (10 * p_hash + ord(pattern[i])) % Q
+        t_hash = (10 * t_hash + ord(text[i])) % Q
+    for i in range(n - m + 1):
+        if p_hash == t_hash:
+            for j in range(m):
+                comps += 1
+                if text[i + j] != pattern[j]:
+                    break
+        if i < n - m:
+            t_hash = (10 * (t_hash - ord(text[i]) * h) + ord(text[i + m])) % Q
+            if t_hash < 0:
+                t_hash += Q
+    return comps
+
+input_sizes = [500, 1000, 10000]
+pattern_sizes = [5, 10, 20]
+n = len(input_sizes)
+texts = [generate_random_text(length=i, seed=42 + idx) for idx, i in enumerate(input_sizes)]
+patterns = [generate_random_pattern(length=pattern_sizes[i], text=texts[i], seed=100 + i) for i in range(n)]
+
+def input_size_vs_execution_time(show_plot: bool = True):
+    naive_map, kmp_map, rk_map = {}, {}, {}
+    iterations = 5
+    for i in range(n):
+        t = time.perf_counter()
+        for _ in range(iterations): naive(text=texts[i], pattern=patterns[i])
+        naive_map[input_sizes[i]] = ((time.perf_counter() - t) / iterations) * 1000
+
+        t = time.perf_counter()
+        for _ in range(iterations): kmp(text=texts[i], pattern=patterns[i])
+        kmp_map[input_sizes[i]] = ((time.perf_counter() - t) / iterations) * 1000
+
+        t = time.perf_counter()
+        for _ in range(iterations): rk(text=texts[i], pattern=patterns[i])
+        rk_map[input_sizes[i]] = ((time.perf_counter() - t) / iterations) * 1000
+
+    plt.figure(figsize=(9, 5.5))
+    plt.plot(input_sizes, [naive_map[s] for s in input_sizes], label="Naive String Match", marker="o", color="#d62728", linewidth=2)
+    plt.plot(input_sizes, [kmp_map[s] for s in input_sizes], label="KMP", marker="s", color="#1f77b4", linewidth=2)
+    plt.plot(input_sizes, [rk_map[s] for s in input_sizes], label="Rabin-Karp", marker="^", color="#2ca02c", linewidth=2)
+    plt.title("Input Size vs. Execution Time", fontsize=13, fontweight="bold")
+    plt.xlabel("Text Size (n)", fontsize=11)
+    plt.ylabel("Execution Time (ms)", fontsize=11)
+    plt.grid(True, linestyle="--", alpha=0.6)
+    plt.legend(fontsize=10)
+    plt.tight_layout()
+    plt.savefig(IMAGES_DIR / "input_size_vs_execution_time.png", dpi=300)
+    if show_plot: plt.show()
+
+def pattern_length_vs_execution_time(show_plot: bool = True):
+    naive_map, kmp_map, rk_map = {}, {}, {}
+    iterations = 5
+    fixed_text = texts[-1]
+    test_patterns = [generate_random_pattern(length=ps, text=fixed_text, seed=200 + idx) for idx, ps in enumerate(pattern_sizes)]
+    for i in range(len(pattern_sizes)):
+        ps, p = pattern_sizes[i], test_patterns[i]
+        t = time.perf_counter()
+        for _ in range(iterations): naive(text=fixed_text, pattern=p)
+        naive_map[ps] = ((time.perf_counter() - t) / iterations) * 1000
+        t = time.perf_counter()
+        for _ in range(iterations): kmp(text=fixed_text, pattern=p)
+        kmp_map[ps] = ((time.perf_counter() - t) / iterations) * 1000
+        t = time.perf_counter()
+        for _ in range(iterations): rk(text=fixed_text, pattern=p)
+        rk_map[ps] = ((time.perf_counter() - t) / iterations) * 1000
+
+    plt.figure(figsize=(9, 5.5))
+    plt.plot(pattern_sizes, [naive_map[p] for p in pattern_sizes], label="Naive String Match", marker="o", color="#d62728", linewidth=2)
+    plt.plot(pattern_sizes, [kmp_map[p] for p in pattern_sizes], label="KMP", marker="s", color="#1f77b4", linewidth=2)
+    plt.plot(pattern_sizes, [rk_map[p] for p in pattern_sizes], label="Rabin-Karp", marker="^", color="#2ca02c", linewidth=2)
+    plt.title(f"Pattern Length vs. Execution Time (Text Size = {len(fixed_text)})", fontsize=13, fontweight="bold")
+    plt.xlabel("Pattern Length (m)", fontsize=11)
+    plt.ylabel("Execution Time (ms)", fontsize=11)
+    plt.grid(True, linestyle="--", alpha=0.6)
+    plt.legend(fontsize=10)
+    plt.tight_layout()
+    plt.savefig(IMAGES_DIR / "pattern_length_vs_execution_time.png", dpi=300)
+    if show_plot: plt.show()
+
+def input_size_vs_comparisions(show_plot: bool = True):
+    naive_map, kmp_map, rk_map = {}, {}, {}
+    for i in range(n):
+        sz = input_sizes[i]
+        naive_map[sz] = count_naive_comparisons(texts[i], patterns[i])
+        kmp_map[sz] = count_kmp_comparisons(texts[i], patterns[i])
+        rk_map[sz] = count_rk_comparisons(texts[i], patterns[i])
+
+    plt.figure(figsize=(9, 5.5))
+    plt.plot(input_sizes, [naive_map[s] for s in input_sizes], label="Naive String Match", marker="o", color="#d62728", linewidth=2)
+    plt.plot(input_sizes, [kmp_map[s] for s in input_sizes], label="KMP", marker="s", color="#1f77b4", linewidth=2)
+    plt.plot(input_sizes, [rk_map[s] for s in input_sizes], label="Rabin-Karp (Verification Comps)", marker="^", color="#2ca02c", linewidth=2)
+    plt.title("Input Size vs. Number of Comparisons", fontsize=13, fontweight="bold")
+    plt.xlabel("Text Size (n)", fontsize=11)
+    plt.ylabel("Number of Character Comparisons", fontsize=11)
+    plt.grid(True, linestyle="--", alpha=0.6)
+    plt.legend(fontsize=10)
+    plt.tight_layout()
+    plt.savefig(IMAGES_DIR / "input_size_vs_comparisons.png", dpi=300)
+    if show_plot: plt.show()
+
+if __name__ == "__main__":
+    input_size_vs_execution_time()
+    pattern_length_vs_execution_time()
+    input_size_vs_comparisions()
+\end{lstlisting}
+
+\newpage
+
+\subsection*{4.3 Analysis 1: Input Size vs. Execution Time}
+Table \ref{tab:input_size_time} and Figure \ref{fig:input_size_time} show the empirical execution times as text length increases from $500$ to $10,000$ characters.
+
+\begin{table}[H]
+\centering
+\caption{Empirical Execution Times (in milliseconds) across variable text sizes.}
+\label{tab:input_size_time}
+\vspace{0.2cm}
+\resizebox{0.95\textwidth}{!}{
+\begin{tabular}{ccccc}
+\toprule
+\textbf{Text Size ($n$)} & \textbf{Pattern Length ($m$)} & \textbf{Naive Match (ms)} & \textbf{KMP Match (ms)} & \textbf{Rabin-Karp (ms)} \\
+\midrule
+500   & 5  & 0.0456 & 0.0288 & 0.0621 \\
+1000  & 10 & 0.0914 & 0.0597 & 0.1237 \\
+10000 & 20 & 0.9339 & 0.5860 & 1.2857 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{images/input_size_vs_execution_time.png}
+\caption{Input Size ($n$) versus Execution Time (ms) for Naive, KMP, and Rabin-Karp.}
+\label{fig:input_size_time}
+\end{figure}
+
+\textbf{Key Insights}:
+\begin{enumerate}
+    \item \textbf{Linear Scaling}: All three algorithms exhibit linear scaling with respect to input text size $n$.
+    \item \textbf{KMP Superiority}: KMP consistently records the lowest execution time ($0.586$ ms for $n = 10,000$), approximately $37\%$ faster than the Naive method and $54\%$ faster than Rabin-Karp. This is because KMP requires zero backtracking and minimal instruction cycles per character.
+    \item \textbf{Rabin-Karp Overhead}: Although asymptotically $\mathcal{O}(n + m)$ on average, Rabin-Karp experiences higher constant-factor overhead in Python due to modular arithmetic (multiplication, subtraction, and modulo operations) at every window position.
+\end{enumerate}
+
+\newpage
+
+\subsection*{4.4 Analysis 2: Pattern Length vs. Execution Time}
+To isolate the effect of pattern length $m$ on runtime, the text length is held strictly constant at $n = 10,000$ characters while varying pattern length $m \in \{5, 10, 20\}$.
+
+\begin{table}[H]
+\centering
+\caption{Execution Times (ms) across variable pattern lengths for fixed text length $n = 10,000$.}
+\label{tab:pattern_length_time}
+\vspace{0.2cm}
+\resizebox{0.9\textwidth}{!}{
+\begin{tabular}{cccc}
+\toprule
+\textbf{Pattern Length ($m$)} & \textbf{Naive Match (ms)} & \textbf{KMP Match (ms)} & \textbf{Rabin-Karp (ms)} \\
+\midrule
+5  & 1.0046 & 0.6008 & 1.4073 \\
+10 & 1.0445 & 0.5801 & 1.3073 \\
+20 & 0.9624 & 0.6036 & 1.5088 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{images/pattern_length_vs_execution_time.png}
+\caption{Pattern Length ($m$) versus Execution Time (ms) with constant text size $n = 10,000$.}
+\label{fig:pattern_length_time}
+\end{figure}
+
+\textbf{Key Insights}:
+\begin{enumerate}
+    \item \textbf{Invariance to Pattern Length}: When text size $n$ is held constant, varying pattern length $m$ from $5$ to $20$ produces virtually negligible impact on execution times across all three algorithms.
+    \item \textbf{Why Naive Stays Flat}: In random text over $\Sigma = \{a,b,c,d\}$, mismatches occur within the first 1--2 characters regardless of whether the pattern has length 5 or 20.
+    \item \textbf{KMP Stability}: The $\Theta(m)$ LPS preprocessing time ($m \le 20$) is dwarfed by the $\Theta(n)$ search time, maintaining flat line performance at $\approx 0.60$ ms.
+    \item \textbf{Rabin-Karp Verification}: With $Q=101$, the number of collisions is very small, so the verification time remains bounded and independent of $m$.
+\end{enumerate}
+
+\newpage
+
+\subsection*{4.5 Analysis 3: Input Size vs. Number of Comparisons}
+Table \ref{tab:comparisons} and Figure \ref{fig:comparisons} detail the actual character comparisons executed by each algorithm as text size increases.
+
+\begin{table}[H]
+\centering
+\caption{Number of Character Comparisons across different input text sizes.}
+\label{tab:comparisons}
+\vspace{0.2cm}
+\resizebox{0.95\textwidth}{!}{
+\begin{tabular}{ccccc}
+\toprule
+\textbf{Text Size ($n$)} & \textbf{Pattern ($m$)} & \textbf{Naive Comparisons} & \textbf{KMP Comparisons} & \textbf{Rabin-Karp Char Comps} \\
+\midrule
+500   & 5  & 658    & 627    & \textbf{21} \\
+1000  & 10 & 1342   & 1257   & \textbf{20} \\
+10000 & 20 & 13374  & 12561  & \textbf{187} \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{images/input_size_vs_comparisons.png}
+\caption{Input Size ($n$) versus Number of Character Comparisons.}
+\label{fig:comparisons}
+\end{figure}
+
+\textbf{Key Insights}:
+\begin{enumerate}
+    \item \textbf{Rabin-Karp Comparison Efficiency}: Figure \ref{fig:comparisons} demonstrates the core algorithmic advantage of Rabin-Karp: it performs \textbf{only 187 character comparisons} for $n = 10,000$, compared to \textbf{13,374} for Naive and \textbf{12,561} for KMP. That is an astounding \textbf{98.6\% reduction} in character comparisons!
+    \item \textbf{Why Rabin-Karp Performs So Few Character Comparisons}: Rabin-Karp filters almost all window positions via rolling integer arithmetic. Character equality checks occur exclusively when hash values coincide.
+    \item \textbf{Naive versus KMP Comparisons}: KMP requires fewer comparisons than the Naive algorithm (12,561 vs 13,374 for $n=10,000$), saving comparisons because the LPS table skips re-evaluating known prefix alignments upon mismatch.
+\end{enumerate}
+
+\newpage
+
+\subsection*{4.6 Comprehensive Algorithmic Comparison Matrix}
+Table \ref{tab:comparison_matrix} summarizes the theoretical characteristics, empirical performance, and operational trade-offs of the three string matching algorithms.
+
+\begin{table}[H]
+\centering
+\caption{Comprehensive Comparison of String Matching Algorithms.}
+\label{tab:comparison_matrix}
+\vspace{0.2cm}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Evaluation Metric} & \textbf{Naive Match} & \textbf{KMP Algorithm} & \textbf{Rabin-Karp Algorithm} \\
+\midrule
+\textbf{Best-Case Time Complexity}     & $\mathcal{O}(n)$ & $\Theta(n)$ & $\mathcal{O}(n)$ \\
+\textbf{Average-Case Time Complexity}  & $\mathcal{O}(n)$ & $\Theta(n)$ & $\mathcal{O}(n)$ \\
+\textbf{Worst-Case Time Complexity}    & $\mathcal{O}(n \cdot m)$ & $\Theta(n + m)$ & $\mathcal{O}(n \cdot m)$ \\
+\textbf{Preprocessing Time}            & None ($\mathcal{O}(1)$) & $\Theta(m)$ (LPS Array) & $\Theta(m)$ (Initial Hashes) \\
+\textbf{Auxiliary Space}               & $\mathcal{O}(1)$ & $\Theta(m)$ & $\mathcal{O}(1)$ \\
+\textbf{Backtracking in Text}          & Yes & No (Strictly forward) & No (Sliding window) \\
+\textbf{Character Comparisons ($n=10000$)} & High ($13,374$) & Moderate ($12,561$) & Extremely Low ($187$) \\
+\textbf{Execution Speed (Empirical)}   & Fast ($0.93$ ms) & Fastest ($0.58$ ms) & Moderate ($1.28$ ms) \\
+\textbf{Multiple Pattern Matching}     & Impractical & Requires Aho-Corasick & Natural extension (Bloom Filter) \\
+\textbf{Best Use Case}                 & Small text / simple tasks & Large text / streaming data & Plagiarism / Multi-pattern \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\subsection*{4.7 Conclusion}
+The laboratory experiments provide concrete empirical validation of theoretical string matching principles:
+\begin{itemize}
+    \item \textbf{KMP} offers the best overall execution performance and guarantees strict linear worst-case complexity $\Theta(n + m)$ without backtracking. It is the optimal algorithm for single-pattern search in continuous streams and large text corpora.
+    \item \textbf{Rabin-Karp} dramatically reduces character comparisons by replacing string comparisons with $O(1)$ numerical hash operations, making it particularly valuable when character comparisons are computationally expensive or when extending to multi-pattern search.
+    \item \textbf{Naive String Matching}, despite its worst-case $O(n \cdot m)$ vulnerability on periodic texts, performs adequately on average random text due to frequent early mismatches, while requiring zero preprocessing and $O(1)$ memory.
+\end{itemize}
+
+\end{document}

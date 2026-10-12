@@ -226,5 +226,5 @@ images
 *.exe
 *.out
 
-/HPC-MTech-I/utils
+utils
 Makefile
