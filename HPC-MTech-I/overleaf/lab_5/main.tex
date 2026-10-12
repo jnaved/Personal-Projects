@@ -1,0 +1,149 @@
+\documentclass[12pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{newtxtext,newtxmath}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+
+\AtBeginDocument{
+    \fontsize{12pt}{14pt}\selectfont
+}
+
+% Header
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Name: \underline{Shaik Jnaved}}
+\fancyhead[R]{Enrollment No.: \underline{P26DS001}}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{15pt}
+
+% Code formatting
+\lstset{
+    language=C,
+    basicstyle=\ttfamily\fontsize{8pt}{10pt}\selectfont,
+    breaklines=true,
+    frame=single,
+    columns=fullflexible,
+    keepspaces=true,
+    showstringspaces=false,
+    keywordstyle=\color{blue}\textbf,
+    commentstyle=\color{green!50!black}\textit,
+    tabsize=4,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    numbersep=6pt
+}
+
+\begin{document}
+
+% ==============================================================================
+% PROBLEM 1: GENETIC ALGORITHM
+% ==============================================================================
+
+\begin{center}
+\textbf{Computer Science and Engineering Department, SVNIT, Surat}\\
+\textbf{M.Tech. I -- Semester I}\\
+\textbf{High Performance Computing}\\
+\textbf{Lab Assignment 5}
+\end{center}
+
+\vspace{0.2cm}
+
+\textbf{\large Problem Statement 1}
+
+\textbf{Title:} Task Allocation in Distributed Systems using Parallel Genetic Algorithm (OpenMP).
+
+\textbf{Objective:}
+Implement a Parallel Genetic Algorithm (GA) using OpenMP to solve the Task Allocation Problem (TAP) in distributed systems. Consider $M = 300$ tasks and $P = 10$ processing nodes ($P \ll M$). Map each task to an appropriate node such that the Total Cost (Execution Cost + Inter-task Communication Cost) is minimized. Inter-task communication cost between two tasks is incurred if and only if they are scheduled on different nodes ($a_i \ne a_j$). Compare the parallel OpenMP solution with the sequential baseline.
+
+\vspace{0.2cm}
+
+\textbf{Source Code (\texttt{lab\_5/main.c}):}
+\lstinputlisting{../../lab_5/main.c}
+
+\newpage
+
+\textbf{Output (Genetic Algorithm):}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{images/ga_output.png}
+\caption{Benchmark Execution Output for Sequential vs. Parallel Genetic Algorithm ($M = 300, P = 10$)}
+\end{figure}
+
+\textbf{Analysis \& Discussion (Genetic Algorithm):}
+\begin{enumerate}
+    \item \textbf{Cost Model:} Total Cost comprises Execution Cost ($\sum E[i][a_i]$) and Communication Cost ($\sum_{i < j} C[i][j] \cdot [a_i \ne a_j]$).
+    \item \textbf{OpenMP Parallelization:} Fitness evaluation and offspring reproduction are distributed across threads using \texttt{\#pragma omp parallel for schedule(static)}.
+    \item \textbf{Thread Safety:} A lightweight thread-safe generator (\texttt{simple\_rand}) with private seeds avoids mutex contention from standard \texttt{rand()}.
+    \item \textbf{Performance:} Sequential GA took \textbf{0.2810 s} vs. Parallel GA \textbf{0.0580 s}, achieving a \textbf{4.84$\times$ speedup} (30.28\% parallel efficiency on 16 threads).
+\end{enumerate}
+
+\newpage
+
+% ==============================================================================
+% PROBLEM 2: PARTICLE SWARM OPTIMIZATION
+% ==============================================================================
+
+\begin{center}
+\textbf{Computer Science and Engineering Department, SVNIT, Surat}\\
+\textbf{M.Tech. I -- Semester I}\\
+\textbf{High Performance Computing}\\
+\textbf{Lab Assignment 5}
+\end{center}
+
+\vspace{0.2cm}
+
+\textbf{\large Problem Statement 2}
+
+\textbf{Title:} Task Allocation in Distributed Systems using Parallel Particle Swarm Optimization (OpenMP).
+
+\textbf{Objective:}
+Implement a Parallel Particle Swarm Optimization (PSO) algorithm using OpenMP to solve the Task Allocation Problem (TAP). Represent particle positions in continuous space mapped to discrete node assignments using floor projection ($\lfloor pos[k] \rfloor$). Parallelize particle trajectory updates and fitness evaluations with OpenMP and compare execution runtime with the sequential implementation.
+
+\vspace{0.2cm}
+
+\textbf{Source Code (\texttt{lab\_5/pso.c}):}
+\lstinputlisting{../../lab_5/pso.c}
+
+\newpage
+
+\textbf{Output (Particle Swarm Optimization):}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{images/pso_output.png}
+\caption{Benchmark Execution Output for Sequential vs. Parallel PSO ($M = 300, P = 10$)}
+\end{figure}
+
+\textbf{Analysis \& Discussion (Particle Swarm Optimization):}
+\begin{enumerate}
+    \item \textbf{Continuous-to-Discrete Mapping:} Continuous particle positions in $[0, P)^M$ are discretized via $\lfloor pos[k] \rfloor$ to compute allocation costs while maintaining smooth velocity updates.
+    \item \textbf{OpenMP Parallelization:} Particle updates and objective evaluations are parallelized using \texttt{\#pragma omp parallel for schedule(static)}.
+    \item \textbf{Performance:} Sequential PSO took \textbf{0.3160 s} vs. Parallel PSO \textbf{0.0450 s}, achieving a \textbf{7.02$\times$ speedup} (43.89\% parallel efficiency on 16 threads).
+\end{enumerate}
+
+\vspace{0.3cm}
+
+\textbf{\large Summary Comparison Table}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Algorithm} & \textbf{Sequential Time} & \textbf{Parallel Time (OMP)} & \textbf{Speedup} & \textbf{Parallel Efficiency} \\
+\midrule
+Genetic Algorithm (GA) & 0.2810 s & 0.0580 s & \textbf{4.84$\times$} & 30.28\% \\
+Particle Swarm Optimization (PSO) & 0.3160 s & 0.0450 s & \textbf{7.02$\times$} & 43.89\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\end{document}

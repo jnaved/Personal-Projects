@@ -225,3 +225,6 @@ images
 *.csv
 *.exe
 *.out
+
+/HPC-MTech-I/utils
+Makefile
