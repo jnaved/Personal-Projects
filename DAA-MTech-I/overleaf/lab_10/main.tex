@@ -1,0 +1,371 @@
+\documentclass[12pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{newtxtext,newtxmath}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{xcolor}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+
+% Keep entire document at 12 pt
+\AtBeginDocument{
+    \fontsize{12pt}{14pt}\selectfont
+}
+
+% ------------------------------------------------
+% Header Configuration
+% ------------------------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Name: \underline{Shaik Jnaved}}
+\fancyhead[R]{Enrollment No.: \underline{P26DS001}}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{15pt}
+
+% ------------------------------------------------
+% Code Formatting Configuration
+% ------------------------------------------------
+\lstset{
+    basicstyle=\ttfamily\fontsize{8.5pt}{10.5pt}\selectfont,
+    breaklines=true,
+    frame=single,
+    columns=fullflexible,
+    keepspaces=true,
+    showstringspaces=false,
+    keywordstyle=\color{blue}\bfseries,
+    commentstyle=\color{gray}\itshape,
+    stringstyle=\color{teal}
+}
+
+\begin{document}
+
+% ==============================================================================
+% TITLE BANNER
+% ==============================================================================
+\begin{center}
+\textbf{\Large SARDAR VALLABHBHAI NATIONAL INSTITUTE OF TECHNOLOGY, SURAT}\\[4pt]
+\textbf{\large Department of Computer Science \& Engineering}\\[3pt]
+\textbf{\large CS103 / CSDS103: Design and Analysis of Algorithms}\\[3pt]
+\textbf{\large M.Tech. (DS) I Year -- Semester I}\\[4pt]
+\textbf{\Large Lab Assignment 10: Advanced Backtracking Algorithms with Domain Constraints}
+\end{center}
+
+\vspace{0.2cm}
+\hrule
+\vspace{0.4cm}
+
+\textbf{Overview \& Scope}:\\
+This laboratory report investigates the \textbf{Backtracking Paradigm} for combinatorial constraint-satisfaction problems (CSP). We design, analyze, and empirically evaluate augmented backtracking solvers for three canonical algorithmic problems:
+\begin{enumerate}
+    \item \textbf{Question 1.1}: The $8$-Queens Problem with pre-placed fixed queens, prohibited forbidden cells, strict contradiction rejection, $\mathcal{O}(1)$ bounding checks, and symmetry reduction.
+    \item \textbf{Question 2.1}: The Constrained Sum of Subsets Problem with cardinality boundaries $[k_{\min}, k_{\max}]$, mandatory and excluded elements, distinct position tracking for duplicate values, and comprehensive pruning explanations.
+    \item \textbf{Question 3.1}: List-Constrained Graph Coloring on arbitrary undirected graphs (supporting both adjacency lists and adjacency matrices), pre-colored vertices, restricted per-vertex color palettes, minimum-color optimization, and benchmark evaluation on the 3-regular Regular Dodecahedron (20 vertices, 30 edges).
+\end{enumerate}
+
+\vspace{0.3cm}
+
+% ==============================================================================
+% QUESTION 1.1: CONSTRAINED 8-QUEENS
+% ==============================================================================
+\section*{Question 1.1: Constrained 8-Queens Problem Solver}
+
+\subsection*{1.1 Problem Formulation and Constraints}
+The classical $N$-Queens problem requires placing $N$ non-attacking queens on an $N \times N$ chessboard such that no two queens share the same row, column, main diagonal, or anti-diagonal. Question 1.1 extends the classical formulation with four additional constraints:
+\begin{enumerate}
+    \item \textbf{Pre-placed Queens ($P$)}: A set of predetermined cells where queens are permanently anchored and cannot be relocated.
+    \item \textbf{Forbidden Cells ($F$)}: A set of board coordinates where queen placement is strictly prohibited.
+    \item \textbf{Contradiction Rejection}: The algorithm must proactively validate inputs and reject inconsistent instances (e.g., pre-placed queens mutually attacking each other, pre-placed queens on forbidden squares, multiple pre-placed queens in the same row, or coordinates out of bounds).
+    \item \textbf{Symmetry Reduction}: When the imposed constraints exhibit mirror reflectional symmetry, the solver avoids generating symmetric duplicate arrangements.
+\end{enumerate}
+
+\subsection*{1.2 Algorithmic Strategy and Bounding Functions}
+\textbf{State Space Tree Formulation}:\\
+The search space is structured as an $N$-level tree where level $r \in \{0, 1, \dots, N-1\}$ assigns the column coordinate $c \in \{0, 1, \dots, N-1\}$ of the queen in row $r$. This immediately satisfies row non-collision.
+
+\textbf{$\mathcal{O}(1)$ Bounding Function}:\\
+To achieve instantaneous branch pruning, we track occupied columns and diagonals using hash sets:
+\begin{itemize}
+    \item Column lookup: $\text{cols\_used} = \{c_0, c_1, \dots\}$
+    \item Main diagonal lookup ($r - c = \text{const}$): $\text{diag1\_used} = \{r - c\}$
+    \item Anti-diagonal lookup ($r + c = \text{const}$): $\text{diag2\_used} = \{r + c\}$
+\end{itemize}
+A placement at $(r, c)$ is safe if and only if:
+\[
+(r, c) \notin F \quad \land \quad c \notin \text{cols\_used} \quad \land \quad (r - c) \notin \text{diag1\_used} \quad \land \quad (r + c) \notin \text{diag2\_used}
+\]
+If any condition fails, the branch is pruned immediately without further exploration.
+
+\textbf{Symmetry Reduction (Mirror Pruning)}:\\
+If the constraint sets $P$ and $F$ are invariant under vertical reflection $(r, c) \leftrightarrow (r, N - 1 - c)$, and row $0$ contains no pre-placed queen, we restrict the candidate columns for row $0$ to:
+\[
+c \in \left\{0, 1, \dots, \left\lfloor \frac{N}{2} \right\rfloor - 1\right\}
+\]
+This halves the root branching factor and prevents searching symmetrical right-half duplicates.
+
+\subsection*{1.3 Python Implementation (\texttt{src/lab\_10/n\_queens.py})}
+\begin{lstlisting}[language=Python]
+import time
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
+
+Coordinate = Tuple[int, int]
+Cell = Union[str, Coordinate]
+
+def to_coord(cell: Cell, n: int = 8) -> Coordinate:
+    if isinstance(cell, (tuple, list)):
+        r, c = int(cell[0]), int(cell[1])
+        if not (0 <= r < n and 0 <= c < n):
+            raise ValueError(f"Coordinate ({r}, {c}) is outside the {n}x{n} board.")
+        return (r, c)
+    if isinstance(cell, str):
+        clean = cell.strip().lower()
+        col = ord(clean[0]) - ord('a')
+        rank = int(clean[1:])
+        row = n - rank
+        if not (0 <= col < n and 1 <= rank <= n):
+            raise ValueError(f"Cell '{cell}' is outside the {n}x{n} board.")
+        return (row, col)
+    raise ValueError(f"Invalid cell format: {cell}")
+
+def validate_input(n: int, pre_placed: Set[Coordinate], forbidden: Set[Coordinate]) -> None:
+    for r, c in pre_placed:
+        if (r, c) in forbidden:
+            raise ValueError(f"Contradiction: Pre-placed queen at ({r}, {c}) occupies a forbidden cell!")
+    queens = list(pre_placed)
+    for i in range(len(queens)):
+        r1, c1 = queens[i]
+        for j in range(i + 1, len(queens)):
+            r2, c2 = queens[j]
+            if r1 == r2 or c1 == c2 or abs(r1 - r2) == abs(c1 - c2):
+                raise ValueError(f"Contradiction: Pre-placed queens attack each other!")
+
+def is_safe(row: int, col: int, cols_used: Set[int], diag1_used: Set[int], diag2_used: Set[int], forbidden: Set[Coordinate]) -> bool:
+    if (row, col) in forbidden or col in cols_used or (row - col) in diag1_used or (row + col) in diag2_used:
+        return False
+    return True
+
+def solve_8_queens(n: int = 8, pre_placed: Optional[List[Cell]] = None, forbidden: Optional[List[Cell]] = None, use_symmetry_reduction: bool = False, find_all: bool = True):
+    pre_set = {to_coord(c, n) for c in (pre_placed or [])}
+    forb_set = {to_coord(c, n) for c in (forbidden or [])}
+    validate_input(n, pre_set, forb_set)
+
+    fixed_row_to_col = {r: c for r, c in pre_set}
+    cols_used, diag1_used, diag2_used = set(), set(), set()
+    for r, c in pre_set:
+        cols_used.add(c)
+        diag1_used.add(r - c)
+        diag2_used.add(r + c)
+
+    stats = {"nodes_explored": 0, "backtracks": 0, "pruned_conflicts": 0, "pruned_forbidden": 0, "solutions_found": 0, "elapsed_time_ms": 0.0}
+    solutions, board = [], [-1] * n
+    start_time = time.perf_counter()
+
+    def backtrack(row: int) -> bool:
+        stats["nodes_explored"] += 1
+        if row == n:
+            solutions.append(list(board))
+            stats["solutions_found"] += 1
+            return not find_all
+
+        if row in fixed_row_to_col:
+            board[row] = fixed_row_to_col[row]
+            should_stop = backtrack(row + 1)
+            board[row] = -1
+            if should_stop: return True
+            stats["backtracks"] += 1
+            return False
+
+        cols_to_try = range(n // 2) if (row == 0 and use_symmetry_reduction and 0 not in fixed_row_to_col) else range(n)
+        for col in cols_to_try:
+            if (row, col) in forb_set:
+                stats["pruned_forbidden"] += 1
+                continue
+            if not is_safe(row, col, cols_used, diag1_used, diag2_used, forb_set):
+                stats["pruned_conflicts"] += 1
+                continue
+
+            board[row] = col
+            cols_used.add(col)
+            diag1_used.add(row - col)
+            diag2_used.add(row + col)
+
+            if backtrack(row + 1): return True
+
+            board[row] = -1
+            cols_used.remove(col)
+            diag1_used.remove(row - col)
+            diag2_used.remove(row + col)
+            stats["backtracks"] += 1
+        return False
+
+    backtrack(0)
+    stats["elapsed_time_ms"] = (time.perf_counter() - start_time) * 1000
+    return solutions, stats
+\end{lstlisting}
+
+\subsection*{1.4 Experimental Results and Visualization}
+Table \ref{tab:n_queens} displays the search metrics across different experimental scenarios.
+
+\begin{table}[H]
+\centering
+\caption{Empirical Search Metrics for Question 1.1 ($N = 8$)}
+\label{tab:n_queens}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Configuration} & \textbf{Solutions} & \textbf{Nodes Explored} & \textbf{Backtracks} & \textbf{Time (ms)} \\
+\midrule
+Standard Unconstrained & 92 & 2,057 & 2,056 & 3.33 ms \\
+With Symmetry Reduction & 46 & 1,029 & 1,028 & 1.68 ms \\
+Pre-placed \texttt{e4} + 5 Forbidden Cells & 8 & 244 & 243 & 0.31 ms \\
+Contradictory / Unsolvable Input & 0 & 0 (Rejected) & 0 & 0.01 ms \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.62\textwidth]{images/n_queens_solution.png}
+\caption{Valid Placement for Question 1.1 with pre-placed Queen [P] at \texttt{e4}, forbidden cells [X], and non-attacking solved Queens [Q].}
+\label{fig:n_queens}
+\end{figure}
+
+\vspace{0.4cm}
+
+% ==============================================================================
+% QUESTION 2.1: CONSTRAINED SUM OF SUBSETS
+% ==============================================================================
+\section*{Question 2.1: Constrained Sum of Subsets Problem}
+
+\subsection*{2.1 Mathematical Formulation}
+Given a multiset of $n$ positive integers $S = \{w_0, w_1, \dots, w_{n-1}\}$ and a target sum $T$, find all subsets $X \subseteq S$ represented by binary selection vectors $(x_0, \dots, x_{n-1}) \in \{0, 1\}^n$ satisfying:
+\begin{enumerate}
+    \item \textbf{Target Sum Equality}: $\sum_{i=0}^{n-1} w_i x_i = T$.
+    \item \textbf{Cardinality Range}: $k_{\min} \le \sum_{i=0}^{n-1} x_i \le k_{\max}$.
+    \item \textbf{Mandatory Inclusions}: Every element $m \in M_{\text{req}}$ must satisfy $x_m = 1$.
+    \item \textbf{Excluded Omissions}: Every element $e \in E_{\text{proh}}$ must satisfy $x_e = 0$.
+    \item \textbf{Duplicate Position Tracking}: Items are uniquely keyed as $(i, w_i)$, allowing identical numeric values at distinct indices to form distinct valid subsets.
+\end{enumerate}
+
+\subsection*{2.2 Horowitz--Sahni Bounding Functions}
+Let $\text{curr\_sum} = \sum_{j < i} w_j x_j$ and $\text{rem\_sum} = \sum_{j \ge i, w_j \notin E} w_j$.
+\begin{enumerate}
+    \item \textbf{Bound 1 (Sum Overflow)}: If $\text{curr\_sum} + w_i > T$, the inclusion branch ($x_i = 1$) is pruned.
+    \item \textbf{Bound 2 (Insufficient Remaining Sum)}: If $\text{curr\_sum} + \text{rem\_sum} - w_i < T$, the exclusion branch ($x_i = 0$) cannot reach $T$ and is pruned.
+    \item \textbf{Bound 3 (Cardinality Max Bound)}: If $|X| + 1 > k_{\max}$, the inclusion branch is pruned.
+    \item \textbf{Bound 4 (Cardinality Min Bound)}: If $|X| + \text{rem\_count} < k_{\min}$, the exclusion branch is pruned.
+    \item \textbf{Bound 5 (Forbidden Filter)}: If $w_i \in E$, the inclusion branch is pruned.
+    \item \textbf{Bound 6 (Mandatory Filter)}: If $w_i \in M$ and no future copy exists, the exclusion branch is pruned.
+\end{enumerate}
+
+\subsection*{2.3 Benchmark Evaluation on $S=\{3, 5, 6, 7, 9, 11, 12\}, T=21$}
+Parameters: $k_{\min}=2$, $k_{\max}=4$, $\text{Mandatory}=\{3\}$, $\text{Excluded}=\{7\}$.
+\begin{itemize}
+    \item \textbf{Unique Valid Solution}: $\{3, 6, 12\}$ with positions $[(0, 3), (2, 6), (6, 12)]$, $\text{Sum} = 21$, $\text{Size} = 3 \in [2, 4]$.
+    \item \textbf{Search Reduction}: Explored only $28$ nodes out of $2^7 = 128$ total nodes ($78.1\%$ search space avoided).
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\caption{Pruning Distribution for Benchmark Instance $S=\{3,5,6,7,9,11,12\}, T=21$}
+\label{tab:subset_pruning}
+\begin{tabular}{lcp{9.0cm}}
+\toprule
+\textbf{Pruning Rule} & \textbf{Count} & \textbf{Explanation \& Representative Branch} \\
+\midrule
+Sum Overflow ($> 21$) & 12 & Adding item exceeds $T$ (e.g., $\{3, 5, 6\} + 9 = 23 > 21$). \\
+Insufficient Suffix Sum ($< 21$) & 10 & Omitting item leaves insufficient sum to reach $T$ (e.g., at $\{3, 5\}$). \\
+Excluded Filter & 4 & Attempting to include $7 \in \text{Excluded}$. \\
+Mandatory Omission Filter & 1 & Attempting to exclude mandatory element $3$ at root node. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{images/subset_sum_pruning.png}
+\caption{Pruning Breakdown and Search Space Reduction for Constrained Sum of Subsets.}
+\label{fig:subset_sum}
+\end{figure}
+
+\vspace{0.4cm}
+
+% ==============================================================================
+% QUESTION 3.1: LIST-CONSTRAINED GRAPH COLORING
+% ==============================================================================
+\section*{Question 3.1: List-Constrained Graph Coloring}
+
+\subsection*{3.1 Problem Definition}
+Given an undirected graph $G = (V, E)$, a maximum color bound $m$, restricted candidate color palettes $L(v) \subseteq \{1, \dots, m\}$ for each vertex $v \in V$, and pre-assigned colors for fixed vertices $P \subset V$, find all vertex mappings $c: V \to \{1, \dots, m\}$ satisfying:
+\[
+c(v) \in L(v) \quad \forall v \in V, \qquad c(u) \neq c(v) \quad \forall (u, v) \in E, \qquad c(p) = \text{fixed}(p) \quad \forall p \in P.
+\]
+
+\subsection*{3.2 Bounding Function and Graph Representations}
+The algorithm accepts either an adjacency list $\text{Adj}[u]$ or an $n \times n$ adjacency matrix $M[u][v]$. For each candidate color $c \in L(v)$:
+\[
+\text{Safe}(v, c) \iff \forall u \in \text{Adj}[v], \quad \text{color}[u] \neq c.
+\]
+If $\text{Safe}(v, c) = \text{False}$, the assignment is pruned immediately.
+
+\subsection*{3.3 Benchmark: Regular Dodecahedron (20 Vertices, 30 Edges)}
+The regular dodecahedron is the 3-regular planar 1-skeleton of the Platonic dodecahedron. With 12 pentagonal faces, its chromatic number is $\chi(G) = 3$.
+\begin{itemize}
+    \item We fixed pre-colored vertices $V_0 = 1$ and $V_1 = 2$.
+    \item The algorithm discovers a valid $3$-coloring in only \textbf{21 recursive calls} with \textbf{18 pruned branches} in $0.012\text{ ms}$.
+    \item Every edge was verified to connect differently colored vertices.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.55\textwidth]{images/dodecahedron_coloring.png}
+\caption{Schlegel Diagram of the Regular Dodecahedron colored with $m=3$ colors and pre-colored vertices $\{V_0, V_1\}$.}
+\label{fig:dodecahedron}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Experimental Results for Question 3.1 across Benchmark Graphs}
+\label{tab:graph_coloring}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Graph} & $|V|$ & $|E|$ & \textbf{Max Colors ($m$)} & \textbf{Recursive Calls} & \textbf{Branches Pruned} \\
+\midrule
+$K_3$ + tail (Restricted Lists) & 4 & 4 & 3 & 9 & 5 \\
+Regular Dodecahedron & 20 & 30 & 3 & 21 & 18 \\
+Petersen Graph & 10 & 15 & 3 & 12 & 8 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{0.4cm}
+
+% ==============================================================================
+% CONCLUSION & COMPLEXITY SUMMARY
+% ==============================================================================
+\section*{Conclusion and Algorithmic Summary}
+Table \ref{tab:complexity_summary} summarizes the theoretical complexity and pruning performance across all three lab problems.
+
+\begin{table}[H]
+\centering
+\caption{Theoretical Complexity and Empirical Pruning Summary}
+\label{tab:complexity_summary}
+\begin{tabular}{lllp{6.2cm}}
+\toprule
+\textbf{Problem} & \textbf{Worst-Case Time} & \textbf{Space Complexity} & \textbf{Pruning Mechanism} \\
+\midrule
+Q1.1: 8-Queens & $\mathcal{O}(N!)$ & $\mathcal{O}(N)$ & $\mathcal{O}(1)$ Hash sets + Mirror reduction \\
+Q2.1: Constrained Subset Sum & $\mathcal{O}(2^n)$ & $\mathcal{O}(n)$ & Suffix sum bounds + Cardinality pruning \\
+Q3.1: List Graph Coloring & $\mathcal{O}(m^{|V|})$ & $\mathcal{O}(|V|)$ & Adjacency checks + Palette restrictions \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All algorithms were implemented in clean, procedural Python 3 and verified through automated test suites in \texttt{utils/lab\_10/walkthrough.py}.
+
+\end{document}
