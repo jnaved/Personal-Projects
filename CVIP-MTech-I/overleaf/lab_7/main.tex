@@ -1,0 +1,309 @@
+\documentclass[12pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{newtxtext,newtxmath} % Times-style font
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+
+% Keep entire document at 12 pt
+\AtBeginDocument{
+    \fontsize{12pt}{14pt}\selectfont
+}
+
+% ------------------------------------------------
+% Header & Footer
+% ------------------------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Name: \underline{Shaik Jnaved}}
+\fancyhead[R]{Enrollment No.: \underline{P26DS001}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{15pt}
+
+% ------------------------------------------------
+% Code formatting
+% ------------------------------------------------
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\fontsize{8.5pt}{10.5pt}\selectfont,
+    keywordstyle=\color{blue}\bfseries,
+    stringstyle=\color{teal},
+    commentstyle=\color{gray}\itshape,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=6pt,
+    breaklines=true,
+    frame=single,
+    columns=fullflexible,
+    keepspaces=true,
+    showstringspaces=false,
+    tabsize=4
+}
+
+\begin{document}
+
+% ------------------------------------------------
+% TITLE
+% ------------------------------------------------
+\begin{center}
+\textbf{Computer Science and Engineering Department, SVNIT, Surat}\\
+\textbf{M.Tech. I -- Semester I}\\
+\textbf{Computer Vision and Image Processing (CS6111 / CSDS119)}\\
+\textbf{Lab Assignment 7: Radiometry, Surface Reflectance, Camera Optics, and Empirical Illumination Analysis}
+\end{center}
+
+\vspace{0.3cm}
+
+\textbf{Problem Statement:} \\
+This laboratory investigation explores the physical process of image formation from light generation to sensor digitization across two parts:
+\begin{itemize}
+    \item \textbf{PART A (Radiometry and Image Formation):}
+    \begin{enumerate}
+        \item Investigate received illumination vs. surface area and source distance.
+        \item Perform numerical sensitivity experiments on illumination power, distance, orientation ($\cos\theta$), and surface reflectance.
+        \item Simulate two surfaces with distinct reflection properties (Lambertian diffuse vs. Phong specular) under variable lighting and viewing angles.
+        \item Simulate a diffuse surface and analyze outgoing intensity as a function of illumination level and surface reflectance (lightness constancy ambiguity).
+        \item Simulate camera optics radiometry investigating focal length, aperture ($f$-number), exposure time, and $\cos^4\alpha$ natural vignetting.
+        \item Implement an end-to-end image-formation pipeline from illumination to final 8-bit digital pixel values across multiple materials.
+        \item Render synthetic 3D scenes under different lighting conditions and compare using intensity profiles, histograms, and spatial difference maps.
+    \end{enumerate}
+    \item \textbf{PART B (Experimental Investigation on Physical Captures):} \\
+    Analyze and compare physical laboratory images of an object under direct illumination and shadow across: (a) Overall brightness, (b) Pixel-intensity distributions, (c) Mean and standard deviation, (d) Regional variation across selected ROIs, and (e) Surface appearance changes.
+\end{itemize}
+
+\vspace{0.3cm}
+\hrule
+\vspace{0.3cm}
+
+% ------------------------------------------------
+\section*{PART A: Radiometry and Image Formation}
+% ------------------------------------------------
+
+\subsection*{1. Received Illumination vs. Surface Area and Distance}
+
+\textbf{Theoretical Principle:} \\
+For an isotropic point source with radiant intensity $I$ [$\text{W/sr}$], the received irradiance $E$ on a surface patch normal to the incident light at distance $r$ obeys the \textbf{Inverse-Square Law}:
+\begin{equation}
+    E(r) = \frac{\Phi_{\text{rec}}}{A} = \frac{I}{r^2} \quad [\text{W/m}^2]
+\end{equation}
+The total received radiant flux $\Phi_{\text{rec}}$ across a finite surface area $A$ is:
+\begin{equation}
+    \Phi_{\text{rec}}(r, A) = E(r) \cdot A = \frac{I \cdot A}{r^2} \quad [\text{W}]
+\end{equation}
+
+\textbf{Findings \& Observations:}
+\begin{itemize}
+    \item Local irradiance $E$ depends strictly on distance $r$ and is independent of receiver surface area $A$.
+    \item Total intercepted power $\Phi_{\text{rec}}$ scales linearly with area $A$ and inversely with $r^2$.
+    \item Log-log scaling confirmed theoretical exponents: slope of $-2.00$ for distance and $+1.00$ for area.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.88\textwidth]{images/q1_received_illumination.png}
+    \caption{Q1: Received illumination vs. surface area and distance from an isotropic source.}
+\end{figure}
+
+% ------------------------------------------------
+\subsection*{2. Numerical Parameter Sensitivity Analysis}
+
+\textbf{Physical Formulation:} \\
+The reflected radiance $L$ from a planar Lambertian patch is governed by:
+\begin{equation}
+    L(P, r, \theta, \rho) = \frac{\rho}{\pi} E = \frac{\rho P \cos\theta}{4\pi^2 r^2} \quad [\text{W}/(\text{m}^2\cdot\text{sr})]
+\end{equation}
+
+\textbf{Baseline Parameters:} $P_0 = 100.0\,\text{W}$, $r_0 = 2.0\,\text{m}$, $\theta_0 = 0^\circ$ ($\cos\theta_0 = 1.0$), $\rho_0 = 0.8$. Baseline radiance $L_0 \approx 0.5066\,\text{W}/(\text{m}^2\cdot\text{sr})$.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.88\textwidth]{images/q2_parameter_sensitivity.png}
+    \caption{Q2: One-at-a-time (OAT) parameter sensitivity for power, distance, tilt, and reflectance.}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.72\textwidth]{images/q2_normalized_elasticity.png}
+    \caption{Q2: Normalized elasticity comparison ($\pm 50\%$ perturbation around baseline).}
+\end{figure}
+
+Distance ($r$) exhibits the highest sensitivity (power $-2.0$), while power ($P$) and reflectance ($\rho$) exhibit linear elasticity ($+1.0$). Surface tilt ($\theta$) follows Lambert's cosine law, vanishing when $\theta \ge 90^\circ$.
+
+% ------------------------------------------------
+\newpage
+\subsection*{3. Diffuse vs. Specular Surface Reflection Characteristics}
+
+\textbf{Reflectance Models:}
+\begin{enumerate}
+    \item \textbf{Lambertian Diffuse Surface:} $L_{\text{diff}} = \frac{k_d}{\pi} E_i \max(0, \mathbf{n}\cdot\mathbf{l})$. Radiance is completely isotropic and invariant to viewing direction $\mathbf{v}$.
+    \item \textbf{Phong Glossy Surface:} $L_{\text{gloss}} = \frac{k_d}{\pi} E_i \max(0, \mathbf{n}\cdot\mathbf{l}) + k_s E_i \max(0, \mathbf{r}\cdot\mathbf{v})^\alpha$, where $\mathbf{r} = 2(\mathbf{n}\cdot\mathbf{l})\mathbf{n} - \mathbf{l}$. Features a sharp directional specular lobe centered at $\theta_v = \theta_i$.
+\end{enumerate}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\textwidth]{images/q3a_goniophotometric_lobes.png}
+    \caption{Q3A: Goniophotometric polar reflection lobes vs. viewing angle for $\theta_i \in \{15^\circ, 45^\circ, 70^\circ\}$.}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.68\textwidth]{images/q3b_surface_spheres_appearance.png}
+    \caption{Q3B: Visual appearance comparison on 3D spheres under frontal and oblique lighting.}
+\end{figure}
+
+% ------------------------------------------------
+\subsection*{4. Diffuse Surface Outgoing Radiance \& Lightness Constancy}
+
+\textbf{Bilinear Interaction:} Outgoing radiance $L_o = \frac{\rho}{\pi} E_i$ creates hyperbolic iso-radiance curves:
+\begin{equation}
+    \rho \cdot E_i = \text{constant}
+\end{equation}
+A high-reflectance object under dim light ($\rho=0.8, E_i=250$) yields identical outgoing radiance ($L_o = 63.66$) as a low-reflectance object under bright light ($\rho=0.2, E_i=1000$). This formalizes the ill-posed \textbf{lightness constancy problem} in computer vision.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/q4_diffuse_radiance_contours.png}
+    \caption{Q4: Diffuse radiance cross-sections and 2D contour map showing lightness ambiguity.}
+\end{figure}
+
+% ------------------------------------------------
+\newpage
+\subsection*{5. Camera Image-Formation Radiometry \& Natural Vignetting}
+
+\textbf{Horn's Fundamental Camera Equation:}
+\begin{equation}
+    E_{\text{img}} = L \cdot \frac{\pi}{4} \left(\frac{d}{f}\right)^2 \cos^4\alpha = \frac{\pi L}{4 N^2} \cos^4\alpha \quad [\text{W/m}^2]
+\end{equation}
+where $N = f/d$ is the $f$-number, and $\alpha$ is the off-axis field angle. Sensor radiant exposure is $H = E_{\text{img}} \cdot \Delta t$.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{images/q5a_camera_sensitivity.png}
+    \caption{Q5A: Camera radiometry parameter sweeps: aperture, exposure time, focal length, and vignetting.}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\textwidth]{images/q5b_vignetting_sensor_image.png}
+    \caption{Q5B: 2D simulated camera sensor image of a uniform wall under natural $\cos^4\alpha$ vignetting.}
+\end{figure}
+
+At $\alpha = 35^\circ$, optical vignetting reduces sensor corner irradiance by $55\%$ purely due to geometric obliquity.
+
+% ------------------------------------------------
+\subsection*{6. Complete End-to-End Image Formation Pipeline}
+
+The cascaded physical chain ($\text{Source} \to \text{Surface} \to \text{Optics} \to \text{Sensor ADC}$) was evaluated on a curved surface with Matte Chalk on the left ($k_d=0.85, k_s=0$) and Glossy Enamel on the right ($k_d=0.30, k_s=0.70, \alpha=40$).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/q6_end_to_end_pipeline.png}
+    \caption{Q6: End-to-end pipeline stages: Surface Irradiance $\to$ Outgoing Radiance $\to$ Image Irradiance $\to$ Quantized Output.}
+\end{figure}
+
+% ------------------------------------------------
+\newpage
+\subsection*{7. Synthetic 3D Multi-Object Scene Rendering}
+
+A ray-traced 3D scene containing a diffuse sphere, a glossy sphere, and a ground receiver with cast shadows was rendered under three illumination conditions: Direct Key Light, Oblique Side Light, and Soft Ambient.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\textwidth]{images/q7a_synthetic_scenes.png}
+    \caption{Q7A: Rendered 3D scene under (1) Direct Key Light, (2) Oblique Side Light, and (3) Soft Ambient.}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/q7b_profiles_histograms_diff.png}
+    \caption{Q7B: Intensity profile line scans ($y=130$), pixel histograms, and absolute difference map $|I_1 - I_2|$.}
+\end{figure}
+
+% ------------------------------------------------
+\vspace{0.4cm}
+\hrule
+\vspace{0.4cm}
+
+\section*{PART B: Experimental Investigation on Real Physical Captures}
+
+The experimental investigation was performed using physical captures from the Harvard Photometric Stereo Benchmark dataset. Note that in the original source capture files, the filenames are reversed relative to their physical lighting condition: \texttt{cat\_shadow.png} exhibits calibrated direct frontal illumination, whereas \texttt{cat\_direct.png} exhibits oblique directional illumination with pronounced self-shadows and cast shadows.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{images/part_b_real_captures_rois.png}
+    \caption{Part B: Physical laboratory captures under direct vs. shadow conditions with annotated ROIs.}
+\end{figure}
+
+\subsection*{Quantitative Analysis \& Statistical Metrics}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Metric} & \textbf{Direct Illumination} & \textbf{Shadow Illumination} & \textbf{Physical Rationale} \\ \midrule
+Full-Image Mean ($\mu$) & $18.75$ & $17.14$ & Background-inclusive average \\
+Foreground Mean ($\mu_{\text{fg}}$) & $87.03$ & $74.47$ & Primary object luminous flux \\
+Foreground Median & $93.00$ & $75.00$ & Central tendency shifted by shadow \\
+Foreground Std. Dev. ($\sigma_{\text{fg}}$) & $41.29$ & $45.99$ & Higher dispersion under oblique lighting \\
+Skewness & $-0.21$ & $+0.06$ & Shadow introduces lower-intensity mode \\
+\bottomrule
+\end{tabular}
+\caption{Global statistical parameters for physical captures.}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.88\textwidth]{images/part_b_statistical_distributions.png}
+    \caption{Part B: Foreground pixel-intensity histograms and Cumulative Distribution Functions (CDFs).}
+\end{figure}
+
+\subsection*{Regional Variation (ROIs) \& Visible Appearance Changes}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Region of Interest (ROI)} & \textbf{Direct ($\mu \pm \sigma$)} & \textbf{Shadow ($\mu \pm \sigma$)} & \textbf{Contrast (Dir)} & \textbf{Contrast (Sha)} \\ \midrule
+\textbf{ROI 1: Direct Facet (Cheek)} & $57.8 \pm 51.3$ & $87.3 \pm 50.3$ & $0.98$ & $0.94$ \\
+\textbf{ROI 2: Shadow Facet (Ear/Flank)} & $51.1 \pm 37.3$ & $11.9 \pm 15.2$ & $1.00$ & $1.00$ \\
+\textbf{ROI 3: Terminator Boundary} & $43.6 \pm 23.9$ & $18.9 \pm 15.1$ & $1.00$ & $1.00$ \\
+\textbf{ROI 4: Foreground Baseline (Chest)} & $128.8 \pm 20.8$ & $68.1 \pm 41.5$ & $0.34$ & $0.78$ \\
+\bottomrule
+\end{tabular}
+\caption{Statistical metrics across selected Regions of Interest.}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.88\textwidth]{images/part_b_regional_variations.png}
+    \caption{Part B: Horizontal transect scanline ($y=160$) and bar chart comparison across ROIs.}
+\end{figure}
+
+\subsection*{Key Physical Insights \& Synthesis}
+\begin{enumerate}
+    \item \textbf{Shading \& Orientation:} In direct lighting (\texttt{cat\_shadow.png}), light illuminates the entire visible foreground uniformly, yielding a higher foreground mean ($87.03$) and median ($93.00$). Under oblique directional lighting (\texttt{cat\_direct.png}), the illuminated cheek (ROI 1) facing the light reaches high intensity ($87.3$), while the opposite flank (ROI 2) plunges into deep self-shadow ($11.9$).
+    \item \textbf{Occlusion \& Visibility:} On deep shadow facets (ROI 2), pixel values fall to the sensor noise floor ($I \approx 12$), where surface topography details are lost to quantization and read noise.
+    \item \textbf{Inter-Reflections:} Shadowed regions remain non-zero ($I > 0$) due to secondary ambient laboratory photon bounces from surrounding surfaces.
+\end{enumerate}
+
+\vspace{0.3cm}
+\hrule
+\vspace{0.3cm}
+
+\section*{Conclusion}
+This assignment verified the deterministic physics connecting radiant power to digital image pixels. The findings establish that single-image intensity is confounded by the bilinear product of illumination and albedo, reinforcing the necessity of multi-image techniques like \textbf{Photometric Stereo} for 3D reconstruction and \textbf{Intrinsic Image Decomposition} for illumination invariance.
+
+\end{document}

@@ -1,0 +1,239 @@
+\documentclass[12pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{newtxtext,newtxmath} % Times-style font
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{subcaption}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+
+% Keep entire document at 12 pt
+\AtBeginDocument{
+    \fontsize{12pt}{14pt}\selectfont
+}
+
+% ------------------------------------------------
+% Header & Footer
+% ------------------------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Name: \underline{Shaik Jnaved}}
+\fancyhead[R]{Enrollment No.: \underline{P26DS001}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{15pt}
+
+% ------------------------------------------------
+% Code formatting
+% ------------------------------------------------
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\fontsize{8pt}{10pt}\selectfont,
+    keywordstyle=\color{blue}\bfseries,
+    stringstyle=\color{teal},
+    commentstyle=\color{gray}\itshape,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=6pt,
+    breaklines=true,
+    frame=single,
+    columns=fullflexible,
+    keepspaces=true,
+    showstringspaces=false,
+    tabsize=4
+}
+
+\begin{document}
+
+% ------------------------------------------------
+% TITLE
+% ------------------------------------------------
+\begin{center}
+\textbf{Computer Science and Engineering Department, SVNIT, Surat}\\
+\textbf{M.Tech. I -- Semester I}\\
+\textbf{Computer Vision and Image Processing (CS6111 / CSDS119)}\\
+\textbf{Lab Assignment: Haar Cascade Face Detection, Model Explanation, and Empirical Perturbation Analysis}
+\end{center}
+
+\vspace{0.2cm}
+
+\textbf{Problem Statement:} \\
+For the assigned task, the student is expected to:
+\begin{enumerate}
+    \item Study and execute the given GitHub Haar Cascade face-detection implementation.
+    \item Use an LLM for code-understanding, debugging, and explaining the role of the cascade model and detection parameters.
+    \item Make the required modifications to create a modular, robust, and telemetry-enabled implementation.
+    \item Empirically test the detector across at least three parameter settings under systematic variations in \textbf{scale}, \textbf{illumination}, and \textbf{face orientation}, quantitatively reporting successful and failed detections.
+    \item Submit the complete code, visual outputs, LLM interaction transcript, and experimental observations as a formal report.
+\end{enumerate}
+
+\vspace{0.2cm}
+\hrule
+\vspace{0.2cm}
+
+\section{Theoretical Foundation of Haar Cascade Face Detection}
+
+The Viola-Jones face detection framework (2001) represents a seminal milestone in computer vision. It is constructed upon four fundamental concepts:
+
+\begin{enumerate}
+    \item \textbf{Haar-like Rectangle Features:} Rather than working directly with raw pixel intensities, the detector computes differences between adjacent rectangular regions (two-rectangle horizontal/vertical, three-rectangle, and four-rectangle diagonal filters). These capture anthropometric invariants of human faces (e.g., eye region darker than forehead; nasal bridge brighter than bilateral cheeks).
+    
+    \item \textbf{Integral Image Representation (Summed Area Table):} Given an image $I(x,y)$, the integral image is defined as:
+    \begin{equation}
+        II(x,y) = \sum_{x' \le x, \, y' \le y} I(x',y')
+    \end{equation}
+    The sum of pixels within any arbitrary rectangular bounding box with corners $A(x_1, y_1), B(x_2, y_1), C(x_1, y_2), D(x_2, y_2)$ is computed in strictly \textbf{$O(1)$ constant time} via:
+    \begin{equation}
+        \text{Sum}(ABCD) = II(D) + II(A) - II(B) - II(C)
+    \end{equation}
+    This enables real-time evaluation regardless of the filter scale.
+    
+    \item \textbf{AdaBoost Feature Selection:} A $24 \times 24$ sub-window yields over 160,000 possible Haar features. AdaBoost selects an optimal small ensemble of weak classifiers (decision stumps) $h_j(x)$ and combines them into a strong classifier $H(x) = \text{sign}\left(\sum_{t=1}^T \alpha_t h_t(x)\right)$.
+    
+    \item \textbf{Attentional Cascade Architecture:} To achieve real-time throughput, classifiers are arranged in a degenerate decision tree of sequential stages. Because $>99.9\%$ of image sub-windows are non-faces, early stages with very few features ($1-10$) reject the vast majority of negative windows immediately. Only candidate windows passing all stages are classified as faces.
+\end{enumerate}
+
+\section{Mathematical Role of Detection Parameters in OpenCV}
+
+The OpenCV detection method \texttt{cv2.CascadeClassifier.detectMultiScale()} exposes several critical hyperparameters:
+
+\begin{itemize}
+    \item \textbf{\texttt{scaleFactor}} (e.g., $1.05, 1.10, 1.30$): Governs the multi-scale image pyramid scaling step. At each level $k$, the image is scaled by $S_k = (\text{scaleFactor})^{-k}$. Smaller values ($1.03-1.05$) create dense pyramid steps, catching faces of arbitrary intermediate sizes at the expense of higher computation time. Larger values ($1.30$) accelerate execution but risk stepping over faces whose true scale falls between pyramid levels.
+    
+    \item \textbf{\texttt{minNeighbors}} (e.g., $2, 4, 8$): Specifies the clustering consensus threshold. Multiple overlapping candidate windows typically detect a true face. Detections are clustered using rectangle grouping; \texttt{minNeighbors} specifies the minimum count of constituent rectangles required to retain a cluster. Lower values increase recall but introduce false positives; higher values guarantee high precision but miss faint or occluded faces.
+    
+    \item \textbf{\texttt{minSize} / \texttt{maxSize}}: Lower and upper bounds on candidate face window size in pixels. Prunes out impossible scale ranges, preventing spurious noise detection in background textures.
+\end{itemize}
+
+\newpage
+
+\section{Code Redesign and Implementation Modifications}
+
+The original implementation (\texttt{main.py}) suffered from critical limitations: hardcoded webcam input (\texttt{cv2.VideoCapture(0)}), hardcoded parameters (\texttt{1.1, 4}), unhandled GUI crashes in headless/WSL environments, zero telemetry, and brittle file paths. 
+
+The improved script (\texttt{main\_improved.py}) introduces a robust, production-ready architecture:
+
+\begin{lstlisting}[caption={Key segments of the enhanced face detection engine (main\_improved.py)}]
+def detect_faces(img, cascade, scaleFactor=1.1, minNeighbors=4, minSize=(30, 30), maxSize=None):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    kwargs = {
+        'scaleFactor': float(scaleFactor),
+        'minNeighbors': int(minNeighbors),
+        'minSize': minSize
+    }
+    if maxSize is not None:
+        kwargs['maxSize'] = maxSize
+        
+    start_t = time.perf_counter()
+    faces = cascade.detectMultiScale(gray, **kwargs)
+    elapsed_ms = (time.perf_counter() - start_t) * 1000.0
+    return faces, elapsed_ms
+
+def annotate_frame(img, faces, elapsed_ms, scaleFactor, minNeighbors):
+    annotated = img.copy()
+    w_img = annotated.shape[1]
+    for idx, (x, y, w, h) in enumerate(faces):
+        cv2.rectangle(annotated, (x, y), (x + w, y + h), (0, 255, 128), 2)
+        # Corner accents and dimension tags
+        label = f"Face #{idx+1} ({w}x{h})"
+        cv2.putText(annotated, label, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 255), 1)
+    # HUD Banner
+    hud_text = f"Faces: {len(faces)} | Latency: {elapsed_ms:.1f}ms | sF: {scaleFactor} | mN: {minNeighbors}"
+    cv2.putText(annotated, hud_text, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+    return annotated
+\end{lstlisting}
+
+\section{Experimental Design and Parameter Configurations}
+
+We defined four distinct parameter configurations representing different operational regimes:
+
+\begin{table}[H]
+\centering
+\caption{Tested Detector Parameter Configurations}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Configuration} & \textbf{scaleFactor} & \textbf{minNeighbors} & \textbf{minSize} & \textbf{Operational Regime} \\
+\midrule
+\textbf{Config 1 (Baseline)} & 1.10 & 4 & $(30, 30)$ & Standard balanced default \\
+\textbf{Config 2 (High Sensitivity)} & 1.05 & 2 & $(20, 20)$ & Permissive / High recall \\
+\textbf{Config 3 (High Precision)} & 1.30 & 8 & $(40, 40)$ & Strict / Fast / High precision \\
+\textbf{Config 4 (Fine Strict)} & 1.03 & 6 & $(30, 30)$ & Dense pyramid / Strict consensus \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\newpage
+
+\section{Experimental Results and Comparative Analysis}
+
+\subsection{Experiment 1: Scale Variation}
+Testing across five scales (Tiny: 0.18$\times$, Small: 0.30$\times$, Medium: 0.50$\times$, Standard: 1.00$\times$, Large: 1.60$\times$):
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/scale_experiment_grid_opt.jpg}
+    \caption{Scale variation experiment across Configs 1--4. Yellow boxes represent Ground Truth; green boxes represent True Positive detections with $\text{IoU} \ge 0.35$.}
+\end{figure}
+
+\textbf{Observations:} Config 3 fails at Tiny scale ($\sim 30$ px face) because of its \texttt{minSize=(40,40)} constraint. Config 2 succeeds with IoU 0.879 due to its lower \texttt{minSize=(20,20)} and permissive consensus. Latency increases by $>10\times$ between Config 3 (5.9 ms) and Config 4 (63.5 ms).
+
+\subsection{Experiment 2: Illumination Variation}
+Testing across severe underexposure, moderate dim light, normal diffuse, moderate overexposure, specular burn/flash, and directional side shadow:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/illumination_experiment_grid_opt.jpg}
+    \caption{Illumination variation experiment across six illumination regimes.}
+\end{figure}
+
+\textbf{Observations:} Linear illumination shifts (dim lighting, moderate overexposure, directional shadow) are well tolerated because Haar rectangle differences cancel out uniform offsets. However, under non-linear clipping (Severe Underexposure and Specular Burn), Config 3 fails completely due to loss of facial edge contrast.
+
+\newpage
+
+\subsection{Experiment 3: Orientation Variation}
+Testing in-plane rotations from $0^\circ$ to $180^\circ$:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/orientation_experiment_grid_opt.jpg}
+    \caption{Orientation variation experiment showing detection breakdown beyond $\pm 15^\circ$.}
+\end{figure}
+
+\textbf{Observations:} Haar rectangle features are rigidly axis-aligned. Beyond $\pm 15^\circ$, facial symmetry and horizontal eye-band contrast are destroyed. Consequently, \textbf{all four detector configurations fail completely at $+30^\circ$, $+45^\circ$, $+90^\circ$, and $180^\circ$}.
+
+\subsection{Quantitative Telemetry and Latency Benchmarks}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{images/latency_and_accuracy_summary_opt.jpg}
+    \caption{Left: Average latency (ms) per configuration. Right: Outcome distribution across all 18 test scenarios.}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Quantitative Performance Summary Across All 18 Test Scenarios}
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+\textbf{Configuration} & \textbf{Mean Latency} & \textbf{Success (Exact)} & \textbf{Partial (TP+FP)} & \textbf{Failed (Missed)} & \textbf{Success Rate} \\
+\midrule
+Config 1 (Baseline) & 20.4 ms & 12 / 18 & 0 / 18 & 6 / 18 & 66.7\% \\
+Config 2 (High Sensitivity) & 39.5 ms & 11 / 18 & 3 / 18 & 4 / 18 & 61.1\% \\
+Config 3 (High Precision) & \textbf{6.1 ms} & 10 / 18 & 0 / 18 & 8 / 18 & 55.6\% \\
+Config 4 (Fine Strict) & 53.6 ms & 11 / 18 & 3 / 18 & 4 / 18 & 61.1\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Conclusion}
+This investigation confirmed the theoretical principles and practical limits of the Viola-Jones Haar Cascade detector. While computationally lightweight and effective for upright frontal faces under moderate lighting, the model is inherently susceptible to extreme illumination saturation and in-plane head rotations exceeding $\pm 15^\circ$. For unrestricted real-world deployment, modern deep convolutional neural networks (e.g., MTCNN, RetinaFace, or YOLO) provide the necessary rotational invariance and feature expressiveness.
+
+\end{document}
