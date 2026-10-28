@@ -1,0 +1,12 @@
+opencv-python==4.10.0.84
+numpy
+matplotlib
+jupyter
+pymeshlab
+trimesh
+scipy
+plotly
+networkx
+fast-simplification
+pandas
+reportlab
