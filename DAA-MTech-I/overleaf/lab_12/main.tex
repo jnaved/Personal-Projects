@@ -1,0 +1,582 @@
+\documentclass[12pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{newtxtext,newtxmath}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{xcolor}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+
+% Keep entire document at 12 pt
+\AtBeginDocument{
+    \fontsize{12pt}{14pt}\selectfont
+}
+
+% ------------------------------------------------
+% Header Configuration
+% ------------------------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Name: \underline{Shaik Jnaved}}
+\fancyhead[R]{Enrollment No.: \underline{P26DS001}}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{15pt}
+
+% ------------------------------------------------
+% Code Formatting Configuration
+% ------------------------------------------------
+\lstset{
+    basicstyle=\ttfamily\fontsize{9pt}{11pt}\selectfont,
+    breaklines=true,
+    frame=single,
+    columns=fullflexible,
+    keepspaces=true,
+    showstringspaces=false,
+    keywordstyle=\color{blue}\bfseries,
+    commentstyle=\color{gray}\itshape,
+    stringstyle=\color{teal}
+}
+
+\begin{document}
+
+% ==============================================================================
+% TITLE BANNER
+% ==============================================================================
+\begin{center}
+\textbf{\Large SARDAR VALLABHBHAI NATIONAL INSTITUTE OF TECHNOLOGY, SURAT}\\[4pt]
+\textbf{\large Department of Computer Science \& Engineering}\\[3pt]
+\textbf{\large CS103 / CSDS103: Design and Analysis of Algorithms}\\[3pt]
+\textbf{\large M.Tech. (DS) I Year -- Semester I}\\[4pt]
+\textbf{\Large Lab Assignment 12: Branch and Bound Algorithms (Job Assignment, TSP, and 0/1 Knapsack)}
+\end{center}
+
+\vspace{0.2cm}
+\hrule
+\vspace{0.4cm}
+
+\textbf{Overview \& Scope}:\\
+This laboratory report investigates the \textbf{Branch and Bound Paradigm} for discrete optimization and combinatorial search problems. We design, mathematically analyze, implement, and empirically evaluate state space tree search algorithms for three canonical problems:
+\begin{enumerate}
+    \item \textbf{Question 1 (Job Assignment Problem)}: Finding the minimum-cost bijective assignment of $4$ employees to $4$ jobs using an admissible row-minimum lower-bound function. We evaluate Least-Cost Branch and Bound (LCBB / Best-First Search) versus FIFO Branch and Bound (Breadth-First Search).
+    \item \textbf{Question 2 (Traveling Salesperson Problem / Minimum-Cost Tour)}: Determining the optimal Hamiltonian cycle for a $5$-city delivery vehicle using a degree-2 relaxation lower bound. We examine how incumbent complete tours trigger subsequent branch pruning and prove global optimality.
+    \item \textbf{Question 3 (Resource Budget Planning / 0/1 Knapsack)}: Maximizing the total benefit of selecting indivisible projects within a resource budget of $15$ units. We analyze the continuous fractional knapsack relaxation, investigate the impact of project ordering on the number of nodes explored, and detail the handling of nodes whose upper bound equals the best-known benefit.
+\end{enumerate}
+
+\vspace{0.3cm}
+
+% ==============================================================================
+% QUESTION 1: JOB ASSIGNMENT PROBLEM
+% ==============================================================================
+\section*{Question 1: Job Assignment Problem using Branch and Bound}
+
+\subsection*{1.1 Problem Statement}
+A company has four employees ($E_0, E_1, E_2, E_3$ or Employees $1$--$4$) and four jobs ($J_0, J_1, J_2, J_3$ or Jobs $1$--$4$) to be assigned. Each employee must receive exactly one job, and each job must be assigned to exactly one employee (a bijective permutation $\pi \in S_4$). The cost of assigning employee $i$ to job $j$ is given by the cost matrix $C$:
+\[
+C = \begin{bmatrix}
+9 & 2 & 7 & 8 \\
+6 & 4 & 3 & 7 \\
+5 & 8 & 1 & 8 \\
+7 & 6 & 9 & 4
+\end{bmatrix}
+\]
+The objective is to find a permutation $\pi$ that minimizes the total assignment cost:
+\[
+\min_{\pi \in S_4} \sum_{i=0}^{3} C[i][\pi(i)]
+\]
+
+\subsection*{1.2 Design of the Lower-Bound Function}
+In the state space tree, each level corresponds to an employee. At depth $k \in \{0, 1, 2, 3, 4\}$, employees $0, \dots, k-1$ have been assigned jobs $\pi(0), \dots, \pi(k-1)$.
+\begin{itemize}
+    \item Let $A_k = \{\pi(0), \dots, \pi(k-1)\}$ denote the set of assigned jobs.
+    \item Let $R_k = \{0, 1, 2, 3\} \setminus A_k$ denote the set of remaining available jobs.
+    \item The accumulated exact cost of assigned employee-job pairs is $\text{Cost}_{\text{assigned}} = \sum_{i=0}^{k-1} C[i][\pi(i)]$.
+\end{itemize}
+For each unassigned employee $i \in \{k, \dots, n-1\}$, the lowest cost they could possibly incur is the minimum cost among the available jobs $R_k$. Therefore, the lower-bound function $\text{LB}(u)$ for node $u$ is:
+\begin{equation}
+\text{LB}(u) = \sum_{i=0}^{k-1} C[i][\pi(i)] + \sum_{i=k}^{n-1} \min_{j \in R_k} C[i][j]
+\end{equation}
+
+\textbf{Proof of Admissibility}:\\
+In any valid feasible completion $\pi^*$ of node $u$, each unassigned employee $i \in \{k, \dots, n-1\}$ must be assigned a unique job $\pi^*(i) \in R_k$. Since $C[i][\pi^*(i)] \ge \min_{j \in R_k} C[i][j]$, summing over all unassigned employees yields:
+\[
+\sum_{i=k}^{n-1} C[i][\pi^*(i)] \ge \sum_{i=k}^{n-1} \min_{j \in R_k} C[i][j] \implies \text{Cost}(\pi^*) \ge \text{LB}(u)
+\]
+Because $\text{LB}(u)$ never overestimates the cost of any feasible extension, it is an admissible lower bound.
+
+\textbf{Pruning Criterion}:\\
+Let $\text{UB} = \text{best\_cost}$ be the cost of the best complete assignment found so far (initialized to $\infty$). For any candidate node $u$:
+\[
+\text{If } \text{LB}(u) \ge \text{UB}, \quad \text{Node } u \text{ is discarded (pruned)}.
+\]
+
+\subsection*{1.3 Theoretical Analysis: Least Lower Bound (LCBB) vs. FIFO Generation Order}
+\textbf{Question Addressed}: \textit{Explain whether choosing the next node using the least lower bound can reduce the search compared with expanding nodes in the order they are generated.}
+
+\textbf{Yes, choosing the next node with the least lower bound (LCBB) drastically reduces the search space compared to FIFO generation order (BFS).} The fundamental reasons are:
+\begin{enumerate}
+    \item \textbf{Informed Search Guidance}: FIFO (queue-based) blindly expands all nodes level-by-level without regard to cost. In contrast, LCBB (min-heap priority queue) prioritizes $\operatorname{argmin}_{u} \text{LB}(u)$, driving exploration directly along the most promising branch.
+    \item \textbf{Early Tight Upper Bound Discovery}: Because FIFO expands layer-by-layer, zero leaf nodes are reached until the maximum depth ($k=4$). Consequently, the upper bound remains $\text{UB} = \infty$ across all expansions at Level 0, Level 1, and Level 2. \textbf{FIFO cannot prune a single internal node during the first three levels.}
+    \item \textbf{Immediate Subtree Pruning}: LCBB reaches the optimal leaf on its 4th expansion, immediately dropping $\text{UB}$ to $13$. All other nodes in the priority queue (e.g., Node 1 with $\text{LB}=17$, Node 4 with $\text{LB}=18$, Node 3 with $\text{LB}=20$) have $\text{LB} \ge 13$ and are pruned upon popping, completely skipping their subtrees.
+\end{enumerate}
+
+\subsection*{1.4 Python Implementation (\texttt{src/lab\_12/job\_assignment.py})}
+\begin{lstlisting}[language=Python]
+import heapq
+from collections import deque
+
+C = [
+    [9, 2, 7, 8],
+    [6, 4, 3, 7],
+    [5, 8, 1, 8],
+    [7, 6, 9, 4]
+]
+N = len(C)
+
+def get_lower_bound(cost, worker, assigned_jobs):
+    available_jobs = set(range(N)) - set(assigned_jobs)
+    lb = cost
+    for w in range(worker, N):
+        lb += min(C[w][j] for j in available_jobs)
+    return lb
+
+def solve_lcbb():
+    pq = []
+    counter = 0
+    root_lb = get_lower_bound(0, 0, ())
+    heapq.heappush(pq, (root_lb, counter, 0, 0, ()))
+    best_cost, best_assignment = float('inf'), None
+    nodes_generated, nodes_expanded, nodes_pruned = 1, 0, 0
+
+    while pq:
+        lb, _, worker, cost, assigned = heapq.heappop(pq)
+        if lb >= best_cost:
+            nodes_pruned += 1
+            continue
+        if worker == N:
+            if cost < best_cost:
+                best_cost = cost
+                best_assignment = assigned
+            continue
+        nodes_expanded += 1
+        available_jobs = [j for j in range(N) if j not in assigned]
+        for job in available_jobs:
+            counter += 1
+            nodes_generated += 1
+            child_cost = cost + C[worker][job]
+            child_assigned = assigned + (job,)
+            child_lb = get_lower_bound(child_cost, worker + 1, child_assigned)
+            if child_lb >= best_cost:
+                nodes_pruned += 1
+            else:
+                heapq.heappush(pq, (child_lb, counter, worker + 1, child_cost, child_assigned))
+    return best_cost, best_assignment, nodes_generated, nodes_expanded, nodes_pruned
+
+def solve_fifo():
+    queue = deque([(get_lower_bound(0, 0, ()), 0, 0, ())])
+    best_cost, best_assignment = float('inf'), None
+    nodes_generated, nodes_expanded, nodes_pruned = 1, 0, 0
+
+    while queue:
+        lb, worker, cost, assigned = queue.popleft()
+        if lb >= best_cost:
+            nodes_pruned += 1
+            continue
+        if worker == N:
+            if cost < best_cost:
+                best_cost = cost
+                best_assignment = assigned
+            continue
+        nodes_expanded += 1
+        available_jobs = [j for j in range(N) if j not in assigned]
+        for job in available_jobs:
+            nodes_generated += 1
+            child_cost = cost + C[worker][job]
+            child_assigned = assigned + (job,)
+            child_lb = get_lower_bound(child_cost, worker + 1, child_assigned)
+            if child_lb >= best_cost:
+                nodes_pruned += 1
+            else:
+                queue.append((child_lb, worker + 1, child_cost, child_assigned))
+    return best_cost, best_assignment, nodes_generated, nodes_expanded, nodes_pruned
+\end{lstlisting}
+
+\subsection*{1.5 Experimental Results and Search Comparison}
+\begin{table}[H]
+\centering
+\resizebox{\linewidth}{!}{
+\begin{tabular}{lccc}
+\toprule
+\textbf{Search Metric} & \textbf{FIFO (Generation Order)} & \textbf{LCBB (Least Lower Bound)} & \textbf{Reduction (\%)} \\
+\midrule
+Nodes Generated & 65 & 11 & \textbf{83.1\%} \\
+Nodes Expanded  & 41 & 4  & \textbf{90.2\%} \\
+Nodes Pruned    & 22 & 6  & -- \\
+Optimal Cost    & 13 & 13 & Identical \\
+Optimal Assignment & $(J_1, J_0, J_2, J_3)$ & $(J_1, J_0, J_2, J_3)$ & Identical \\
+\bottomrule
+\end{tabular}
+}
+\caption{Empirical comparison between FIFO and LCBB for Job Assignment.}
+\end{table}
+
+\textbf{Optimal Assignment Summary}:
+\begin{itemize}
+    \item Employee $0$ $\to$ Job $1$ (Cost = $2$)
+    \item Employee $1$ $\to$ Job $0$ (Cost = $6$)
+    \item Employee $2$ $\to$ Job $2$ (Cost = $1$)
+    \item Employee $3$ $\to$ Job $3$ (Cost = $4$)
+    \item \textbf{Total Minimum Cost} = $2 + 6 + 1 + 4 = \mathbf{13}$.
+\end{itemize}
+
+\vspace{0.4cm}
+
+% ==============================================================================
+% QUESTION 2: TRAVELING SALESPERSON PROBLEM (MINIMUM-COST TOUR)
+% ==============================================================================
+\section*{Question 2: Minimum-Cost Delivery Tour (TSP) using Branch and Bound}
+
+\subsection*{2.1 Problem Formulation}
+A delivery vehicle must start from City 1, visit every other city (Cities 2, 3, 4, 5) exactly once, and return to City 1. The travel costs between cities are given by the symmetric cost matrix $C$ (where $0$ indicates a city cannot connect to itself):
+\[
+C = \begin{bmatrix}
+0 & 14 & 4 & 10 & 20 \\
+14 & 0 & 7 & 8 & 7 \\
+4 & 7 & 0 & 7 & 16 \\
+10 & 8 & 7 & 0 & 2 \\
+20 & 7 & 16 & 2 & 0
+\end{bmatrix}
+\]
+
+\subsection*{2.2 Design of the Lower-Bound Function (Degree-2 Relaxation)}
+In any valid Hamiltonian tour on an undirected graph, every vertex $v \in V$ must have degree 2 (exactly two incident edges in the tour: one arrival and one departure).
+\begin{itemize}
+    \item Let $e_1(v)$ and $e_2(v)$ be the two lowest-cost edges incident to vertex $v$.
+    \item The sum of the two edges chosen for vertex $v$ in any tour must satisfy $\text{cost}(v) \ge e_1(v) + e_2(v)$.
+    \item Summing across all $n$ vertices counts every edge in the tour twice (once for each endpoint).
+    \item Hence, at the root node, an admissible lower bound is:
+    \[
+    \text{Root LB} = \left\lceil \frac{1}{2} \sum_{v \in V} \big(e_1(v) + e_2(v)\big) \right\rceil = \left\lceil \frac{14 + 14 + 11 + 9 + 9}{2} \right\rceil = \left\lceil \frac{57}{2} \right\rceil = 29
+    \]
+\end{itemize}
+For a partial tour path $P = (v_0, v_1, \dots, v_k)$:
+\begin{enumerate}
+    \item Interior vertices ($v_1, \dots, v_{k-1}$) have both incident edges fixed by the path edges ($\text{cost}_{\text{fixed}} = \sum C[v_i][v_{i+1}]$).
+    \item Start endpoint $v_0$ and end endpoint $v_k$ each have 1 edge fixed and need 1 smallest edge connecting to an unvisited city.
+    \item Unvisited vertices $u \notin P$ have 0 edges fixed and need their 2 smallest incident edges among unvisited cities and path endpoints $\{v_0, v_k\}$.
+\end{enumerate}
+\[
+\text{LB}(P) = \left\lceil \frac{1}{2} \left( 2 \cdot \text{cost}_{\text{fixed}} + \text{sum of unfixed incident edges} \right) \right\rceil
+\]
+
+\subsection*{2.3 Effect of Current Best Complete Tour on Subsequent Pruning}
+The algorithm maintains $\text{best\_cost}$ initialized to $\infty$.
+\begin{itemize}
+    \item On its 6th node expansion, LCBB reaches the complete tour:
+    \[
+    \text{City } 1 \to \text{City } 3 \to \text{City } 2 \to \text{City } 5 \to \text{City } 4 \to \text{City } 1 \quad (\text{Cost } = 4 + 7 + 7 + 2 + 10 = \mathbf{30})
+    \]
+    \item Instantly, $\text{best\_cost}$ updates to $30$.
+    \item \textbf{Subsequent Pruning}: For every other live node in the priority queue, if $\text{LB} \ge 30$, the node cannot strictly improve the tour and is discarded immediately.
+    \item Branches like Path $(1, 2)$ with $\text{LB}=34$, Path $(1, 5)$ with $\text{LB}=40$, and Path $(1, 3, 5)$ with $\text{LB}=39$ are pruned without expanding any children.
+\end{itemize}
+
+\subsection*{2.4 Mathematical Justification of Optimality}
+\begin{enumerate}
+    \item \textbf{Admissibility}: Because every valid tour must fulfill the degree-2 constraint at every vertex, $\text{LB}(P) \le \text{True Cost of any completion of } P$. No branch containing a tour with cost $< 30$ could have been pruned.
+    \item \textbf{Exhaustive Verification}: At termination, every live node in the state space tree has either been explored or safely pruned with $\text{LB} \ge 30$.
+    \item \textbf{Conclusion}: No tour in the entire combinatorial search space has cost $< 30$. Therefore, the tour $[1, 3, 2, 5, 4, 1]$ with cost $30$ is globally optimal.
+\end{enumerate}
+
+\subsection*{2.5 Python Implementation (\texttt{src/lab\_12/minimum\_cost\_tour.py})}
+\begin{lstlisting}[language=Python]
+import heapq
+from collections import deque
+
+C = [
+    [0, 14, 4, 10, 20],
+    [14, 0, 7, 8, 7],
+    [4, 7, 0, 7, 16],
+    [10, 8, 7, 0, 2],
+    [20, 7, 16, 2, 0]
+]
+N = len(C)
+
+def calc_lower_bound(path):
+    k = len(path)
+    if k == N:
+        return sum(C[path[i]][path[i + 1]] for i in range(N - 1)) + C[path[-1]][path[0]]
+    cost_fixed = sum(C[path[i]][path[i + 1]] for i in range(k - 1))
+    unvisited = set(range(N)) - set(path)
+    sum_unfixed = 0
+    if k == 1:
+        for v in range(N):
+            edges = sorted([C[v][u] for u in range(N) if u != v])
+            sum_unfixed += edges[0] + edges[1]
+    else:
+        sum_unfixed += min(C[path[0]][u] for u in unvisited)
+        sum_unfixed += min(C[path[-1]][u] for u in unvisited)
+        valid_neighbors = unvisited | {path[0], path[-1]}
+        for v in unvisited:
+            edges = sorted([C[v][u] for u in valid_neighbors if u != v])
+            sum_unfixed += edges[0] + edges[1]
+    return (2 * cost_fixed + sum_unfixed + 1) // 2
+
+def solve_tsp_lcbb():
+    pq = []
+    counter = 0
+    root_lb = calc_lower_bound((0,))
+    heapq.heappush(pq, (root_lb, counter, (0,)))
+    best_cost, best_tour = float('inf'), None
+    nodes_generated, nodes_expanded, nodes_pruned = 1, 0, 0
+
+    while pq:
+        lb, _, path = heapq.heappop(pq)
+        if lb >= best_cost:
+            nodes_pruned += 1
+            continue
+        if len(path) == N:
+            tour_cost = sum(C[path[i]][path[i + 1]] for i in range(N - 1)) + C[path[-1]][path[0]]
+            if tour_cost < best_cost:
+                best_cost = tour_cost
+                best_tour = path + (path[0],)
+            continue
+        nodes_expanded += 1
+        unvisited = [v for v in range(N) if v not in path]
+        for next_city in unvisited:
+            counter += 1
+            nodes_generated += 1
+            child_path = path + (next_city,)
+            child_lb = calc_lower_bound(child_path)
+            if child_lb >= best_cost:
+                nodes_pruned += 1
+            else:
+                heapq.heappush(pq, (child_lb, counter, child_path))
+    return best_cost, best_tour, nodes_generated, nodes_expanded, nodes_pruned
+\end{lstlisting}
+
+\subsection*{2.6 Experimental Results and Performance}
+\begin{table}[H]
+\centering
+\resizebox{\linewidth}{!}{
+\begin{tabular}{lccc}
+\toprule
+\textbf{Search Metric} & \textbf{FIFO (Generation Order)} & \textbf{LCBB (Least Lower Bound)} & \textbf{Reduction (\%)} \\
+\midrule
+Nodes Generated & 65 & 16 & \textbf{75.4\%} \\
+Nodes Expanded  & 41 & 6  & \textbf{85.4\%} \\
+Nodes Pruned    & 19 & 9  & -- \\
+Optimal Cost    & 30 & 30 & Identical \\
+\bottomrule
+\end{tabular}
+}
+\caption{Empirical comparison for Traveling Salesperson Problem.}
+\end{table}
+
+\textbf{Optimal Tour Route}:
+$1 \to 3 \to 2 \to 5 \to 4 \to 1$ with edge costs:
+\[
+C(1, 3) = 4, \quad C(3, 2) = 7, \quad C(2, 5) = 7, \quad C(5, 4) = 2, \quad C(4, 1) = 10
+\]
+\[
+\text{Total Minimum Tour Cost} = 4 + 7 + 7 + 2 + 10 = \mathbf{30}.
+\]
+
+\vspace{0.4cm}
+
+% ==============================================================================
+% QUESTION 3: RESOURCE BUDGET PLANNING (0/1 KNAPSACK)
+% ==============================================================================
+\section*{Question 3: Resource Budget Planning (0/1 Knapsack) using Branch and Bound}
+
+\subsection*{3.1 Problem Statement}
+A research team has a budget of $W = 15$ resource units to select a subset of indivisible projects to maximize total benefit:
+\begin{table}[H]
+\centering
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Project} & $P_1$ & $P_2$ & $P_3$ & $P_4$ & $P_5$ & $P_6$ \\
+\midrule
+\textbf{Benefit ($v_i$)} & 12 & 10 & 20 & 15 & 8 & 14 \\
+\textbf{Resource ($w_i$)} & 4 & 3 & 7 & 5 & 2 & 6 \\
+\textbf{Ratio ($v_i/w_i$)} & 3.00 & 3.33 & 2.86 & 3.00 & 4.00 & 2.33 \\
+\bottomrule
+\end{tabular}
+\caption{Project benefits, resource requirements, and value densities.}
+\end{table}
+Mathematical model: Maximize $\sum_{i=1}^6 v_i x_i$ subject to $\sum_{i=1}^6 w_i x_i \le 15$ with $x_i \in \{0, 1\}$.
+
+\subsection*{3.2 Role of Continuous Fractional Relaxation for Upper Bounding}
+\textbf{Question Addressed}: \textit{Since projects cannot be selected fractionally, explain why a fractional selection can still be useful when calculating an upper bound.}
+
+\begin{enumerate}
+    \item \textbf{Mathematical Relaxation Principle}: The feasible region of the binary problem $\{0, 1\}^n$ is a strict subset of the fractional knapsack domain $[0, 1]^n$. Because any feasible binary selection is also a valid fractional selection:
+    \[
+    \max_{x \in \{0, 1\}^n} \sum v_i x_i \le \max_{x \in [0, 1]^n} \sum v_i x_i
+    \]
+    The continuous relaxation provides a strictly valid, admissible upper bound ($\text{UB}$).
+    \item \textbf{Greedy $O(n)$ Solvability}: The fractional knapsack problem is solvable in $O(n)$ time by greedily packing projects in descending order of ratio $v_i / w_i$.
+    \item \textbf{Tight Bounding}: The fractional bound completely exhausts remaining capacity with the highest-density project available, providing a tight cutoff that prunes suboptimal subtrees.
+\end{enumerate}
+
+\subsection*{3.3 Impact of Project Ordering on Search Space}
+\textbf{Question Addressed}: \textit{Investigate how the order in which projects are considered affects the number of nodes explored.}
+\begin{itemize}
+    \item \textbf{Descending Ratio Ordering ($P_5, P_2, P_1, P_4, P_3, P_6$)}: High-density items are included first. Left branches rapidly construct high-value feasible solutions, raising $\text{best\_benefit}$ early. Denying high-ratio projects on right branches causes sharp drops in the fractional bound, pruning large subtrees.
+    \item \textbf{Arbitrary Ordering}: Delays establishing a strong incumbent bound, forcing deeper exploratory branching before pruning occurs.
+\end{itemize}
+
+\subsection*{3.4 Handling Nodes with $\text{UB} == \text{best\_known\_benefit}$}
+\textbf{Question Addressed}: \textit{Explain why a node whose upper bound is equal to the best known benefit requires careful handling.}
+\begin{enumerate}
+    \item \textbf{Single Optimum vs. All Alternate Optima}:
+    \begin{itemize}
+        \item If only \textbf{one} optimal solution is required: Since $\text{UB} \le \text{best\_benefit}$, the node cannot strictly improve the objective. It can be safely pruned, saving search effort (19 expansions vs. 24 expansions).
+        \item If \textbf{all} alternate optimal solutions are desired: Pruning when $\text{UB} == \text{best\_benefit}$ eliminates other valid subsets that achieve the identical optimal value! In this exact instance, there are \textbf{two distinct optimal subsets} of benefit $45$:
+        \[
+        \text{Option 1: } \{P_1, P_2, P_4, P_5\} \quad (\text{Weight } = 14 \le 15, \quad \text{Benefit } = 45)
+        \]
+        \[
+        \text{Option 2: } \{P_2, P_3, P_4\} \quad (\text{Weight } = 15 \le 15, \quad \text{Benefit } = 45)
+        \]
+        Pruning strictly with $\text{UB} < \text{best\_benefit}$ is necessary to discover both optima.
+    \end{itemize}
+    \item \textbf{Floating-Point Precision}: Fractional bounds compute $v_k \cdot \frac{W_{\text{rem}}}{w_k}$. Round-off errors can cause a true bound of $45.0$ to evaluate to $44.99999999999999$. An $\epsilon$-tolerance ($10^{-9}$) must be used to avoid accidental pruning.
+\end{enumerate}
+
+\subsection*{3.5 Python Implementation (\texttt{src/lab\_12/resource\_budget\_planning.py})}
+\begin{lstlisting}[language=Python]
+import heapq
+
+PROJECTS = [
+    ('P1', 12, 4), ('P2', 10, 3), ('P3', 20, 7),
+    ('P4', 15, 5), ('P5', 8, 2), ('P6', 14, 6)
+]
+TOTAL_BUDGET = 15
+
+def get_fractional_upper_bound(idx, current_val, current_weight, projects, budget=TOTAL_BUDGET):
+    if current_weight > budget:
+        return 0.0
+    ub = float(current_val)
+    remaining_capacity = budget - current_weight
+    remaining_projects = sorted(projects[idx:], key=lambda p: p[1] / p[2], reverse=True)
+    for _, val, weight in remaining_projects:
+        if weight <= remaining_capacity:
+            remaining_capacity -= weight
+            ub += val
+        else:
+            ub += val * (remaining_capacity / weight)
+            break
+    return ub
+
+def solve_resource_planning(projects, budget=TOTAL_BUDGET, find_all_optima=False):
+    pq = []
+    counter = 0
+    root_ub = get_fractional_upper_bound(0, 0, 0, projects, budget)
+    heapq.heappush(pq, (-root_ub, 0, counter, 0, 0, 0, ()))
+    best_val, best_solutions = 0, []
+    nodes_generated, nodes_expanded, nodes_pruned = 1, 0, 0
+
+    while pq:
+        neg_ub, _, _, idx, val, weight, selected = heapq.heappop(pq)
+        ub = -neg_ub
+        if find_all_optima:
+            if ub < best_val - 1e-9:
+                nodes_pruned += 1
+                continue
+        else:
+            if ub <= best_val:
+                nodes_pruned += 1
+                continue
+        if idx == len(projects):
+            continue
+        nodes_expanded += 1
+        name, proj_val, proj_weight = projects[idx]
+
+        # Branch 1: Include Project
+        if weight + proj_weight <= budget:
+            in_val = val + proj_val
+            in_w = weight + proj_weight
+            in_sel = selected + (name,)
+            in_ub = get_fractional_upper_bound(idx + 1, in_val, in_w, projects, budget)
+            counter += 1
+            nodes_generated += 1
+            if in_val > best_val:
+                best_val = in_val
+                best_solutions = [(in_val, in_w, in_sel)]
+            elif in_val == best_val and find_all_optima:
+                best_solutions.append((in_val, in_w, in_sel))
+            should_prune = (in_ub < best_val - 1e-9) if find_all_optima else (in_ub <= best_val)
+            if should_prune:
+                nodes_pruned += 1
+            else:
+                heapq.heappush(pq, (-in_ub, -in_val, counter, idx + 1, in_val, in_w, in_sel))
+
+        # Branch 2: Exclude Project
+        ex_val, ex_w, ex_sel = val, weight, selected
+        ex_ub = get_fractional_upper_bound(idx + 1, ex_val, ex_w, projects, budget)
+        counter += 1
+        nodes_generated += 1
+        should_prune = (ex_ub < best_val - 1e-9) if find_all_optima else (ex_ub <= best_val)
+        if should_prune:
+            nodes_pruned += 1
+        else:
+            heapq.heappush(pq, (-ex_ub, -ex_val, counter, idx + 1, ex_val, ex_w, ex_sel))
+
+    return best_val, best_solutions, nodes_generated, nodes_expanded, nodes_pruned
+\end{lstlisting}
+
+\subsection*{3.6 Ordering Benchmark and Alternate Optima Comparison}
+\begin{table}[H]
+\centering
+\resizebox{\linewidth}{!}{
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Project Ordering Strategy} & \textbf{Generated} & \textbf{Expanded} & \textbf{Pruned} & \textbf{Max Benefit} \\
+\midrule
+Descending Ratio ($v_i/w_i$) & 32 & 19 & 13 & 45 \\
+Original Given Order & 30 & 17 & 13 & 45 \\
+Descending Benefit ($v_i$) & 20 & 11 & 9 & 45 \\
+Ascending Resource ($w_i$) & 36 & 22 & 14 & 45 \\
+Ascending Ratio (Worst) & 15 & 8 & 7 & 45 \\
+\bottomrule
+\end{tabular}
+}
+\caption{Impact of project ordering on the number of search nodes explored.}
+\end{table}
+
+\begin{table}[H]
+\centering
+\resizebox{\linewidth}{!}{
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Pruning Policy on $\text{UB} == \text{best\_known}$} & \textbf{Expanded} & \textbf{Generated} & \textbf{Pruned} & \textbf{Solutions Discovered} \\
+\midrule
+Prune if $\text{UB} \le \text{best}$ (Single Optimum) & 19 & 32 & 13 & 1 solution: $\{P_5, P_2, P_1, P_4\}$ \\
+Prune if $\text{UB} < \text{best}$ (All Alternate Optima) & 24 & 40 & 14 & 2 solutions: $\{P_5, P_2, P_1, P_4\}$, $\{P_2, P_4, P_3\}$ \\
+\bottomrule
+\end{tabular}
+}
+\caption{Comparison of node handling when $\text{UB} == \text{best\_benefit}$.}
+\end{table}
+
+\textbf{Final Project Subsets}:
+\begin{itemize}
+    \item \textbf{Option 1}: $\{P_1, P_2, P_4, P_5\}$ $\implies$ Resource Used = $4 + 3 + 5 + 2 = 14 \le 15$, Total Benefit = $12 + 10 + 15 + 8 = \mathbf{45}$.
+    \item \textbf{Option 2}: $\{P_2, P_3, P_4\}$ $\implies$ Resource Used = $3 + 7 + 5 = 15 \le 15$, Total Benefit = $10 + 20 + 15 = \mathbf{45}$.
+\end{itemize}
+
+\vspace{0.4cm}
+\hrule
+\vspace{0.2cm}
+\begin{center}
+\textit{Report compiled and prepared for CS103 / CSDS103 Laboratory Assessment.}
+\end{center}
+
+\end{document}
