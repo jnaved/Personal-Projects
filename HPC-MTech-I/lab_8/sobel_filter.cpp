@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
         }
         
         image = new unsigned char[rows * cols];  // Proper memory allocation
-        memcpy(image + cols, gray_img.data, rows * cols);  // Copy image data
+        memcpy(image, gray_img.data, rows * cols);  // Copy image data
     }
 
     // Broadcast image dimensions

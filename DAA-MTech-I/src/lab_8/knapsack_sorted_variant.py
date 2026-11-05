@@ -5,16 +5,7 @@ as their order when sorted by decreasing value. Give an efficient algorithm to f
 solution to this variant of the knapsack problem and implement it.
 """
 
-import sys
-from pathlib import Path
 from typing import List, Tuple
-
-# Add workspace root to sys.path
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-from utils.lab_8.knapsack_helpers import solve_knapsack_01_dp
 
 
 def solve_sorted_variant_knapsack(
@@ -40,15 +31,14 @@ def solve_sorted_variant_knapsack(
     Algorithm (Greedy Strategy):
         1. Pair items with original indices: (weight, value, orig_index).
         2. Sort items such that weights are non-decreasing: w_1 <= w_2 <= ... <= w_n.
-           (By the problem premise, values are automatically non-increasing: v_1 >= v_2 >= ...).
         3. Scan greedily from the first item:
            Include item i if weight fits in remaining capacity; stop once capacity is exceeded.
 
     Proof of Correctness (Exchange Argument):
-        - Let G = {1, 2, ..., k} be the greedy solution.
+        - Let G = {1, 2, ..., k} be the greedy prefix solution.
         - Suppose an optimal solution OPT differs from G.
         - Let i be the smallest index such that i in G and i not in OPT.
-        - There must exist some item j in OPT not in G. Since G is a prefix {1, ..., k}, j > k >= i, so i < j.
+        - There must exist some item j in OPT not in G. Since G is a prefix {1, ..., k}, j > k >= i.
         - By sorting order: w_i <= w_j and v_i >= v_j.
         - Replacing item j with item i in OPT yields OPT' = (OPT \\ {j}) U {i}.
           - Weight(OPT') = Weight(OPT) - w_j + w_i <= Weight(OPT) <= capacity (feasible).
@@ -60,25 +50,22 @@ def solve_sorted_variant_knapsack(
         - Sorting: O(n log n) (O(n) if already sorted).
         - Greedy selection: O(n) linear scan.
         - Total Time: O(n log n).
-        - Auxiliary Space: O(n) to store items and indices.
+        - Auxiliary Space: O(n).
     """
     n = len(weights)
     if n == 0 or capacity <= 0:
         return 0, []
 
-    # Verify that the problem condition holds
     # Pair items: (weight, value, original_index)
     items = [(weights[i], values[i], i) for i in range(n)]
-
-    # Sort primarily by weight ascending, secondarily by value descending
     items.sort(key=lambda item: (item[0], -item[1]))
 
     # Validate condition: verify values are non-increasing
     for i in range(len(items) - 1):
         if items[i][1] < items[i + 1][1]:
             raise ValueError(
-                f"Input does not satisfy the problem condition! "
-                f"Item at rank {i} (w={items[i][0]}, v={items[i][1]}) has lower value than "
+                f"Input does not satisfy problem condition: "
+                f"item at rank {i} (w={items[i][0]}, v={items[i][1]}) has lower value than "
                 f"item at rank {i+1} (w={items[i+1][0]}, v={items[i+1][1]})."
             )
 
@@ -93,8 +80,6 @@ def solve_sorted_variant_knapsack(
             total_val += v
             rem_cap -= w
         else:
-            # Since weights are non-decreasing (w_{i+1} >= w_i > rem_cap),
-            # no subsequent item can fit either!
             break
 
     return total_val, selected_indices
@@ -107,11 +92,11 @@ if __name__ == "__main__":
 
     # Sample instance where increasing weight corresponds to decreasing value:
     # Item 1: w=2,  v=100
-    # Item 2: w=4,  v=80
-    # Item 3: w=5,  v=70
-    # Item 4: w=7,  v=50
-    # Item 5: w=9,  v=30
-    # Item 6: w=12, v=15
+    # Item 3: w=4,  v=80
+    # Item 5: w=5,  v=70
+    # Item 0: w=7,  v=50
+    # Item 2: w=9,  v=30
+    # Item 4: w=12, v=15
     sample_weights = [7, 2, 9, 4, 12, 5]
     sample_values = [50, 100, 30, 80, 15, 70]
     knapsack_cap = 15
@@ -131,10 +116,9 @@ if __name__ == "__main__":
     total_w = sum(sample_weights[i] for i in chosen)
     print(f"Total Weight Used             : {total_w} / {knapsack_cap}")
 
-    # Cross-verify with standard 0/1 Knapsack Dynamic Programming
-    dp_val, dp_chosen = solve_knapsack_01_dp(sample_weights, sample_values, knapsack_cap)
+    # Verification: items with w=2 (v=100), w=4 (v=80), w=5 (v=70) sum to 250 with weight 11 <= 15
+    assert opt_val == 250, f"Expected 250, got {opt_val}"
+    assert sorted(chosen) == [1, 3, 5], f"Expected items [1, 3, 5], got {chosen}"
     print("-" * 80)
-    print(f"Standard 0/1 Knapsack DP Value: {dp_val}")
-    assert opt_val == dp_val, f"Optimality failure! Greedy ({opt_val}) != DP ({dp_val})"
-    print("Verification Passed: Greedy solution matches exact 0/1 Knapsack DP value!")
+    print("Verification Passed: Greedy solution achieves optimal value 250 with items [1, 3, 5]!")
     print("=" * 80)

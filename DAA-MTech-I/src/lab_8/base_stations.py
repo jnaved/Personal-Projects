@@ -8,14 +8,7 @@ algorithm that achieves this goal using as few base stations as possible and imp
 algorithm.
 """
 
-import sys
-from pathlib import Path
 from typing import Dict, List, Tuple
-
-# Add workspace root to sys.path
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
 
 def place_base_stations(
@@ -34,27 +27,15 @@ def place_base_stations(
         Tuple[int, List[float], Dict[float, List[float]]]:
             - min_stations (int): Minimum number of base stations required.
             - station_locations (List[float]): Selected locations for the base stations.
-            - coverage_map (Dict[float, List[float]]): Mapping from each station location to the list of houses it covers.
+            - coverage_map (Dict[float, List[float]]): Mapping from each station to houses covered.
 
     Greedy Strategy:
-        1. Sort house positions from west to east: h_1 <= h_2 <= ... <= h_k.
+        1. Sort house positions: h_1 <= h_2 <= ... <= h_k.
         2. Let h_i be the leftmost uncovered house.
-           To cover h_i, a tower must be placed within [h_i - R, h_i + R].
-           To maximize coverage for houses to the east, place the tower as far east as possible:
-           tower_pos = h_i + R.
+           To cover h_i and maximize rightward coverage, place the tower at tower_pos = h_i + R.
         3. This tower covers all houses in [tower_pos - R, tower_pos + R] = [h_i, h_i + 2*R].
-        4. Skip all houses covered by this tower.
-        5. Repeat for the next uncovered house until all houses are covered.
-
-    Proof of Correctness (Greedy Exchange Argument):
-        - Any valid solution must cover the leftmost uncovered house h_i.
-        - Therefore, the tower covering h_i must be located at some coordinate t <= h_i + R.
-        - The greedy choice sets t* = h_i + R >= t.
-        - The set of houses covered by t* to the right is [t* - R, t* + R] = [h_i, h_i + 2R],
-          which is a superset of the houses covered to the right by t ([t - R, t + R] where t + R <= h_i + 2R).
-        - No houses to the left of h_i need coverage because they are already covered.
-        - Thus, substituting t with t* never hurts and leaves fewer or equal remaining houses to cover.
-        - By induction, the greedy placement uses the minimum possible number of base stations.
+        4. Advance past all houses covered by this tower.
+        5. Repeat for the next uncovered house.
 
     Complexity:
         - Sorting: O(k log k) where k is the number of houses.
@@ -65,7 +46,6 @@ def place_base_stations(
     if not house_positions:
         return 0, [], {}
 
-    # Sort house positions
     sorted_houses = sorted(house_positions)
     k = len(sorted_houses)
 
@@ -74,16 +54,14 @@ def place_base_stations(
 
     idx = 0
     while idx < k:
-        # Leftmost uncovered house
         uncovered_house = sorted_houses[idx]
 
-        # Place base station as far east as possible while still covering uncovered_house
+        # Place base station as far east as possible while covering uncovered_house
         tower_pos = uncovered_house + coverage_radius
         station_locations.append(tower_pos)
         coverage_map[tower_pos] = []
 
         # Cover all houses within [tower_pos - radius, tower_pos + radius]
-        # which corresponds to [uncovered_house, uncovered_house + 2 * coverage_radius]
         max_reach = tower_pos + coverage_radius
         while idx < k and sorted_houses[idx] <= max_reach:
             coverage_map[tower_pos].append(sorted_houses[idx])
@@ -111,11 +89,11 @@ if __name__ == "__main__":
     for i, loc in enumerate(tower_locs, 1):
         houses_covered = cov_map[loc]
         cov_range = f"[{loc - radius:04.1f} - {loc + radius:04.1f}] miles"
-        print(f"Tower #{i:<2} at mile {loc:4.1f} | Coverage Range: {cov_range} | Covers {len(houses_covered)} houses: {houses_covered}")
+        print(f"Tower #{i:<2} at mile {loc:4.1f} | Range: {cov_range} | Covers {len(houses_covered)} houses: {houses_covered}")
 
     print("-" * 80)
 
-    # Verification: Ensure every house is within 4 miles of at least one tower
+    # Verification: Ensure every house is within radius miles of at least one tower
     for h in sample_houses:
         min_dist_to_tower = min(abs(h - t) for t in tower_locs)
         assert min_dist_to_tower <= radius + 1e-9, f"House at {h} is not covered! Min dist: {min_dist_to_tower}"

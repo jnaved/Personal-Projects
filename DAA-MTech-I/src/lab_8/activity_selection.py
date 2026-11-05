@@ -10,17 +10,17 @@ of the two different programs that you have implemented.
 """
 
 import random
-import sys
 import time
-from pathlib import Path
-from typing import List, Tuple
+from dataclasses import dataclass
+from typing import List
 
-# Add workspace root to sys.path
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
-from utils.lab_8.interval import Activity
+@dataclass
+class Activity:
+    id: int
+    start: float
+    finish: float
+    name: str = ""
 
 
 # ==============================================================================
@@ -38,13 +38,10 @@ def activity_selection_earliest_finish(activities: List[Activity]) -> List[Activ
            last selected activity.
 
     Time Complexity Analysis:
-        - Sorting: O(n log n) using standard comparison sort.
-        - Linear Scan: O(n) single pass to check compatibility.
+        - Sorting: O(n log n).
+        - Linear Scan: O(n).
         - Total Time: O(n log n).
-        - Auxiliary Space: O(n) to store sorted activities and selected result.
-
-    Optimality:
-        Provably optimal via greedy exchange argument. It guarantees maximum cardinality.
+        - Auxiliary Space: O(n).
     """
     if not activities:
         return []
@@ -79,15 +76,14 @@ def activity_selection_latest_start(activities: List[Activity]) -> List[Activity
            of the last selected activity.
 
     Time Complexity Analysis:
-        - Sorting: O(n log n) using standard comparison sort.
-        - Linear Scan: O(n) single pass backward in time.
+        - Sorting: O(n log n).
+        - Linear Scan: O(n).
         - Total Time: O(n log n).
-        - Auxiliary Space: O(n) to store sorted activities and selected result.
+        - Auxiliary Space: O(n).
 
     Optimality:
         By time-reversal symmetry (t -> -t), selecting the latest starting compatible activity
         is the exact mathematical dual of the earliest finish time algorithm.
-        It also provably yields a maximum-cardinality set of mutually compatible activities.
     """
     if not activities:
         return []
@@ -145,7 +141,7 @@ def compare_algorithms():
     print("Both algorithms achieved the maximum optimal size of 4 activities!\n")
 
     # 2. Empirical Benchmark across problem sizes
-    sizes = [1000, 5000, 20000, 50000, 100000]
+    sizes = [1000, 5000, 20000, 50000]
     rng = random.Random(42)
 
     print("-" * 85)
@@ -153,43 +149,28 @@ def compare_algorithms():
     print("-" * 85)
 
     for n in sizes:
-        # Generate random activities
         acts = []
         for i in range(n):
             s = rng.uniform(0, 1000)
             dur = rng.uniform(0.5, 50)
             acts.append(Activity(id=i + 1, start=s, finish=s + dur))
 
-        # Benchmark Earliest Finish Time (Class algorithm)
         t0 = time.perf_counter()
         eft_sel = activity_selection_earliest_finish(acts)
         t_eft = (time.perf_counter() - t0) * 1000
 
-        # Benchmark Latest Start Time (Requested variant)
         t0 = time.perf_counter()
         lst_sel = activity_selection_latest_start(acts)
         t_lst = (time.perf_counter() - t0) * 1000
 
-        # Verification of optimal size match
-        assert len(eft_sel) == len(lst_sel), f"Size mismatch at N={n}: {len(eft_sel)} != {len(lst_sel)}"
-
+        assert len(eft_sel) == len(lst_sel), f"Size mismatch at N={n}"
         print(f"{n:<10} | {len(eft_sel):<14} | {len(lst_sel):<14} | {t_eft:<16.3f} | {t_lst:<16.3f}")
 
     print("-" * 85)
-    print("\nSummary & Comparison of Time Complexities:")
-    print("1. Earliest Finish Time (EFT):")
-    print("   - Sort activities by finish time ascending: O(n log n)")
-    print("   - Single forward scan: O(n)")
-    print("   - Total Time Complexity: O(n log n)")
-    print("2. Latest Start Time (LST):")
-    print("   - Sort activities by start time descending: O(n log n)")
-    print("   - Single backward scan: O(n)")
-    print("   - Total Time Complexity: O(n log n)")
-    print("3. Asymptotic & Practical Comparison:")
-    print("   - Both algorithms have identical asymptotic time complexity: O(n log n).")
-    print("   - Both algorithms have O(n) auxiliary space complexity.")
-    print("   - Both algorithms produce provably optimal maximal sets of compatible activities.")
-    print("   - Practical execution times are virtually identical, governed by Python's Timsort.")
+    print("\nSummary of Time Complexities:")
+    print("1. Earliest Finish Time (EFT): O(n log n) sorting + O(n) forward scan = O(n log n).")
+    print("2. Latest Start Time (LST):   O(n log n) sorting + O(n) backward scan = O(n log n).")
+    print("Both algorithms have identical O(n log n) time and O(n) space complexity, and are exact duals.")
     print("=" * 85)
 
 

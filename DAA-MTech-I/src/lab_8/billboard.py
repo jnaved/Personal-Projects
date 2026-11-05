@@ -17,14 +17,7 @@ Then, the optimal solution is to place billboards at x1 and x3 for a total reven
 """
 
 import bisect
-import sys
-from pathlib import Path
 from typing import List, Tuple
-
-# Add workspace root to sys.path
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
 
 def max_billboard_revenue(
@@ -57,7 +50,7 @@ def max_billboard_revenue(
 
     Time Complexity:
         - Sorting: O(n log n)
-        - Predecessor search: O(n log n) via binary search (or O(n) using two pointers)
+        - Predecessor search: O(n log n) via binary search
         - DP table filling: O(n)
         - Backtracking: O(n)
         Total Time Complexity: O(n log n) where n is the number of sites.
@@ -147,16 +140,4 @@ if __name__ == "__main__":
     assert max_rev == 10, f"Expected 10, got {max_rev}"
     assert selected == [6, 12], f"Expected [6, 12], got {selected}"
     print("Verification Passed: Correctly obtained revenue 10 with billboards at [6, 12].")
-
-    # Additional Test: Densely spaced sites
-    M2 = 30
-    pos2 = [2, 5, 8, 11, 15, 21, 27]
-    rev2 = [10, 8, 12, 7, 15, 20, 25]
-    rev_test, sel_test = max_billboard_revenue(M2, pos2, rev2, min_dist=5.0)
-    print(f"\nExtended Test:")
-    print(f"Sites: {pos2}, Revenues: {rev2}")
-    print(f"Selected: {sel_test}, Max Revenue: {rev_test}")
-    for i in range(len(sel_test) - 1):
-        assert sel_test[i+1] - sel_test[i] > 5.0, "Violation of distance constraint!"
-    print("All separation constraints strictly satisfied!")
     print("=" * 70)

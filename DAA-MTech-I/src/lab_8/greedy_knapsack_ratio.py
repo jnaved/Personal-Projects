@@ -8,16 +8,58 @@ the ratio F*(I)/F(I) is given as input in terms of a positive integer.
 """
 
 import argparse
-import sys
-from pathlib import Path
 from typing import Dict, List, Tuple
 
-# Add workspace root to sys.path
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
-from utils.lab_8.knapsack_helpers import solve_knapsack_01_dp, solve_knapsack_greedy_by_profit
+def solve_knapsack_greedy_by_profit(
+    weights: List[int],
+    profits: List[int],
+    capacity: int,
+) -> Tuple[int, List[int]]:
+    """Greedy Knapsack: processes objects in non-increasing order of their profit values."""
+    items = sorted(range(len(weights)), key=lambda idx: profits[idx], reverse=True)
+    rem_cap = capacity
+    total_profit = 0
+    selected = []
+
+    for idx in items:
+        if weights[idx] <= rem_cap:
+            selected.append(idx)
+            total_profit += profits[idx]
+            rem_cap -= weights[idx]
+
+    return total_profit, selected
+
+
+def solve_knapsack_01_dp(
+    weights: List[int],
+    profits: List[int],
+    capacity: int,
+) -> Tuple[int, List[int]]:
+    """Exact 0/1 Knapsack Dynamic Programming solver."""
+    n = len(weights)
+    if n == 0 or capacity <= 0:
+        return 0, []
+
+    dp = [[0] * (capacity + 1) for _ in range(n + 1)]
+    for i in range(1, n + 1):
+        w_i = weights[i - 1]
+        p_i = profits[i - 1]
+        for w in range(capacity + 1):
+            if w_i <= w:
+                dp[i][w] = max(dp[i - 1][w], dp[i - 1][w - w_i] + p_i)
+            else:
+                dp[i][w] = dp[i - 1][w]
+
+    chosen = []
+    w = capacity
+    for i in range(n, 0, -1):
+        if dp[i][w] != dp[i - 1][w]:
+            chosen.append(i - 1)
+            w -= weights[i - 1]
+
+    chosen.reverse()
+    return dp[n][capacity], chosen
 
 
 def generate_parameterized_knapsack_instance(target_ratio: int) -> Tuple[List[int], List[int], int]:
@@ -33,18 +75,11 @@ def generate_parameterized_knapsack_instance(target_ratio: int) -> Tuple[List[in
         - Items 1 to 2*R (Light): Each item has Profit p_i = 1, Weight w_i = 1
 
     Behavior:
-        1. When processed in non-increasing order of profit values:
-           p_0 = 2 > p_1 = p_2 = ... = p_{2R} = 1.
-           Greedy-Knapsack processes Item 0 first.
-           Item 0 fits (weight 2R <= 2R), using up the entire capacity M.
-           Remaining capacity becomes 0. None of the other items can be picked.
-           Greedy profit: F(I) = 2.
-        2. Optimal Solution F*(I):
-           Does not pick Item 0. Instead, picks all 2*R light items.
-           Total weight = 2*R * 1 = 2*R <= M.
-           Optimal profit: F*(I) = 2 * R * 1 = 2 * R.
-        3. Ratio:
-           F*(I) / F(I) = (2 * R) / 2 = R = target_ratio.
+        1. Greedy-Knapsack picks Item 0 (profit 2, weight 2R), filling the entire bag.
+           F(I) = 2.
+        2. Optimal picks all 2*R light items (weight 2R, total profit 2R).
+           F*(I) = 2 * R.
+        3. Ratio F*(I) / F(I) = (2 * R) / 2 = R = target_ratio.
     """
     if target_ratio < 1:
         raise ValueError("target_ratio must be a positive integer (>= 1).")
@@ -64,25 +99,19 @@ def generate_parameterized_knapsack_instance(target_ratio: int) -> Tuple[List[in
 
 
 def analyze_greedy_knapsack_ratio(target_ratio: int, verbose: bool = True) -> Dict[str, any]:
-    """
-    Demonstrates the unbounded ratio F*(I) / F(I) on a parameterized instance.
-    """
+    """Demonstrates the unbounded ratio F*(I) / F(I) on a parameterized instance."""
     weights, profits, capacity = generate_parameterized_knapsack_instance(target_ratio)
 
-    # 1. Greedy-Knapsack by non-increasing profit order
     f_greedy, greedy_chosen = solve_knapsack_greedy_by_profit(weights, profits, capacity)
-
-    # 2. Optimal Solution via Exact Dynamic Programming
     f_optimal, opt_chosen = solve_knapsack_01_dp(weights, profits, capacity)
-
     actual_ratio = f_optimal / f_greedy
 
     if verbose:
-        print(f"\nTarget Ratio R         : {target_ratio}")
-        print(f"Knapsack Capacity (M)  : {capacity}")
-        print(f"Total Objects          : {len(weights)} (1 heavy + {2 * target_ratio} light)")
-        print(f"Greedy Solution F(I)   : {f_greedy} (selected {len(greedy_chosen)} item: indices {greedy_chosen})")
-        print(f"Optimal Solution F*(I) : {f_optimal} (selected {len(opt_chosen)} items)")
+        print(f"\nTarget Ratio R           : {target_ratio}")
+        print(f"Knapsack Capacity (M)    : {capacity}")
+        print(f"Total Objects            : {len(weights)} (1 heavy + {2 * target_ratio} light)")
+        print(f"Greedy Solution F(I)     : {f_greedy} (selected item {greedy_chosen})")
+        print(f"Optimal Solution F*(I)   : {f_optimal} (selected {len(opt_chosen)} light items)")
         print(f"Observed Ratio F*(I)/F(I): {actual_ratio:.2f}")
 
     assert actual_ratio == target_ratio, f"Ratio mismatch: expected {target_ratio}, got {actual_ratio}"
@@ -106,15 +135,13 @@ if __name__ == "__main__":
     print("=" * 85)
     print("QUESTION: How large can the ratio F*(I) / F(I) get?")
     print("ANSWER  : The ratio can grow ARBITRARILY LARGE (UNBOUNDED, i.e., F*(I)/F(I) -> infinity).")
-    print("REASON  : Processing by profit alone ignores item weights. A single item with slightly")
-    print("          higher profit can consume the entire knapsack capacity, preventing an arbitrary")
-    print("          number of lightweight, high-density items from being selected.")
+    print("REASON  : Processing by profit alone ignores weights. A single heavy item with slightly")
+    print("          higher profit can consume capacity, blocking many light, high-density items.")
     print("=" * 85)
 
     if args.ratio is not None:
         analyze_greedy_knapsack_ratio(args.ratio, verbose=True)
     else:
-        # Demonstrate across a suite of positive integer ratios
         test_ratios = [1, 2, 4, 7, 10, 25, 50]
         print(f"Demonstrating parameterized instances for ratios: {test_ratios}")
         print("-" * 85)

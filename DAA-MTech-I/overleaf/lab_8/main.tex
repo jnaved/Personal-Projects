@@ -103,7 +103,7 @@ Hence, the recurrence relation is:
 \end{cases}
 \]
 
-\subsection*{1.2 Python Implementation (\texttt{1\_billboard.py})}
+\subsection*{1.2 Python Implementation (\texttt{billboard.py})}
 \begin{lstlisting}[language=Python]
 import bisect
 from typing import List, Tuple
@@ -208,12 +208,19 @@ Let $d$ be the \textit{depth} of the activity set, defined as the maximum number
 
 The greedy algorithm allocates a new hall $k$ if and only if all currently open halls $1, \dots, k-1$ have activities whose finish times exceed $s_i$. That implies at least $k$ activities overlap simultaneously at time $s_i + \epsilon$. Since the maximum overlap depth across all time is $d$, the algorithm can never allocate hall index $d+1$. Therefore, the total number of lecture halls allocated is exactly $d$, which is provably optimal.
 
-\subsection*{2.2 Python Implementation (\texttt{2\_lecture\_halls.py})}
+\subsection*{2.2 Python Implementation (\texttt{lecture\_halls.py})}
 \begin{lstlisting}[language=Python]
 import heapq
 from collections import defaultdict
+from dataclasses import dataclass
 from typing import Dict, List, Tuple
-from utils.lab_8.interval import Activity
+
+@dataclass
+class Activity:
+    id: int
+    start: float
+    finish: float
+    name: str = ""
 
 def schedule_lecture_halls(
     activities: List[Activity],
@@ -292,7 +299,7 @@ The standard Activity Selection Problem seeks a maximum-cardinality subset of mu
 \textbf{Duality Proof via Time-Reversal Symmetry}:
 Consider the temporal reflection mapping $\phi: t \mapsto -t$. Under this transformation, each time interval $[s_i, f_i]$ maps to $[-f_i, -s_i]$. The original start time $s_i$ corresponds to the negative finish time $-f_i$, and the original finish time $f_i$ maps to the negative start time $-s_i$. Selecting an activity maximizing start time $s_i$ is mathematically identical to selecting an activity minimizing $-s_i$ (the earliest finish time in the time-reversed domain). Because the greedy choice property guarantees global optimality for EFT, LST is an exact isomorphic dual and is guaranteed to yield an identical maximum cardinality.
 
-\subsection*{3.2 Python Implementation (\texttt{3\_activity\_selection.py})}
+\subsection*{3.2 Python Implementation (\texttt{activity\_selection.py})}
 \begin{lstlisting}[language=Python]
 def activity_selection_earliest_finish(activities: List[Activity]) -> List[Activity]:
     if not activities:
@@ -371,12 +378,11 @@ Huffman's algorithm constructs a prefix-free variable-length binary encoding sch
     \end{itemize}
 \end{enumerate}
 
-\subsection*{4.2 Python Implementation (\texttt{4\_huffman.py})}
+\subsection*{4.2 Python Implementation (\texttt{huffman.py})}
 \begin{lstlisting}[language=Python]
 import heapq, struct
 from collections import Counter
 from typing import Dict, Optional
-from utils.lab_8.bit_io import BitReader, BitWriter
 
 class HuffmanNode:
     def __init__(self, symbol: Optional[int], freq: int, left=None, right=None):
@@ -464,10 +470,9 @@ Therefore, the $0/1$ knapsack problem reduces to selecting the $k$ objects havin
     \item Overall runtime is $\mathcal{O}(m)$, achieving a massive speedup over traditional $\mathcal{O}(n \cdot m)$ Dynamic Programming.
 \end{enumerate}
 
-\subsection*{5.2 Python Implementation (\texttt{5\_knapsack\_equal\_weights.py})}
+\subsection*{5.2 Python Implementation (\texttt{knapsack\_equal\_weights.py})}
 \begin{lstlisting}[language=Python]
 from typing import List, Tuple
-from utils.lab_8.selection import get_top_k_largest
 
 def solve_knapsack_equal_weights(
     profits: List[int],
@@ -532,7 +537,7 @@ Order items such that $w_1 \le w_2 \le \dots \le w_n$ (which implies $v_1 \ge v_
     \item Repeating this exchange transforms $O$ into $G$ in at most $k$ steps without ever decreasing total profit. Thus, $\text{Value}(G) \ge \text{Value}(O)$, proving that greedy selection is strictly optimal.
 \end{itemize}
 
-\subsection*{6.2 Python Implementation (\texttt{6\_knapsack\_sorted\_variant.py})}
+\subsection*{6.2 Python Implementation (\texttt{knapsack\_sorted\_variant.py})}
 \begin{lstlisting}[language=Python]
 def solve_sorted_variant_knapsack(
     weights: List[int],
@@ -612,7 +617,7 @@ The ratio $\frac{F^*(I)}{F(I)}$ can grow \textbf{arbitrarily large without bound
     Since $R$ can be chosen arbitrarily large, the approximation ratio $\frac{F^*(I)}{F(I)}$ is unbounded.
 \end{enumerate}
 
-\subsection*{7.2 Python Implementation (\texttt{7\_greedy\_knapsack\_ratio.py})}
+\subsection*{7.2 Python Implementation (\texttt{greedy\_knapsack\_ratio.py})}
 \begin{lstlisting}[language=Python]
 def generate_parameterized_knapsack_instance(target_ratio: int) -> Tuple[List[int], List[int], int]:
     if target_ratio < 1:
@@ -688,7 +693,7 @@ We prove by induction that $\text{dist}(g_i) \ge \text{dist}(o_i)$ for all $1 \l
     \item \textbf{Conclusion}: Since the optimal solution reaches New Delhi in $p$ stops ($\text{dist}(\text{Delhi}) - \text{dist}(o_p) \le n$), and $\text{dist}(g_p) \ge \text{dist}(o_p)$, New Delhi is reachable from $g_p$ in at most $p$ stops. Hence, $k \le p$, guaranteeing that the greedy algorithm uses the minimal number of stops ($k = p$).
 \end{itemize}
 
-\subsection*{8.2 Python Implementation (\texttt{8\_petrol\_stops.py})}
+\subsection*{8.2 Python Implementation (\texttt{petrol\_stops.py})}
 \begin{lstlisting}[language=Python]
 def find_minimum_petrol_stops(
     tank_capacity_km: float,
@@ -762,7 +767,7 @@ For $n = 150\text{ km}$, the algorithm selects exactly \textbf{4 stops}:
 \textbf{Proof of Optimality}:
 Any valid placement must cover the leftmost uncovered house $h_i$, requiring a tower at coordinate $t' \le h_i + R$. Our greedy placement sets $t^* = h_i + R \ge t'$. The interval covered to the right by $t^*$ is $[h_i, h_i + 2R]$, which is a superset of the rightward coverage $[t' - R, t' + R]$ of any $t' \le h_i + R$. Hence, choosing $t^*$ leaves fewer or equal remaining houses to cover. By induction, the greedy strategy achieves the minimal number of base stations.
 
-\subsection*{9.2 Python Implementation (\texttt{9\_base\_stations.py})}
+\subsection*{9.2 Python Implementation (\texttt{base\_stations.py})}
 \begin{lstlisting}[language=Python]
 def place_base_stations(
     house_positions: List[float],

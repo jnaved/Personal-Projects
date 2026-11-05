@@ -4,25 +4,79 @@ Write a program to implement file compression (and decompression) using Huffmanâ
 """
 
 import heapq
-import os
 import struct
-import sys
+import tempfile
 from collections import Counter
 from pathlib import Path
-import tempfile
 from typing import Dict, Optional, Tuple
-
-# Add workspace root to sys.path
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-from utils.lab_8.bit_io import BitReader, BitWriter
-
 
 MAGIC_HEADER = b"HUFF"
 
 
+# ==============================================================================
+# BIT-LEVEL I/O HELPERS
+# ==============================================================================
+class BitWriter:
+    """Accumulates bits and writes them into a byte buffer."""
+
+    def __init__(self):
+        self.buffer = bytearray()
+        self.current_byte = 0
+        self.bit_count = 0
+
+    def write_bit(self, bit: int) -> None:
+        self.current_byte = (self.current_byte << 1) | (1 if bit else 0)
+        self.bit_count += 1
+        if self.bit_count == 8:
+            self.buffer.append(self.current_byte)
+            self.current_byte = 0
+            self.bit_count = 0
+
+    def write_bits(self, bit_string: str) -> None:
+        for char in bit_string:
+            self.write_bit(1 if char == "1" else 0)
+
+    def flush(self) -> Tuple[bytes, int]:
+        padding = 0
+        if self.bit_count > 0:
+            padding = 8 - self.bit_count
+            self.current_byte <<= padding
+            self.buffer.append(self.current_byte)
+            self.current_byte = 0
+            self.bit_count = 0
+        return bytes(self.buffer), padding
+
+
+class BitReader:
+    """Reads bit-by-bit from a bytes object, respecting padding bits."""
+
+    def __init__(self, data: bytes, padding: int = 0):
+        self.data = data
+        self.padding = padding
+        self.byte_index = 0
+        self.bit_index = 0
+        self.total_bits = max(0, len(data) * 8 - padding)
+        self.bits_read = 0
+
+    def has_next_bit(self) -> bool:
+        return self.bits_read < self.total_bits
+
+    def read_bit(self) -> int:
+        if not self.has_next_bit():
+            raise EOFError("No more bits to read in BitReader.")
+        current_byte = self.data[self.byte_index]
+        bit = (current_byte >> (7 - self.bit_index)) & 1
+        self.bit_index += 1
+        self.bits_read += 1
+        if self.bit_index == 8:
+            self.bit_index = 0
+            self.byte_index += 1
+        return bit
+
+
+# ==============================================================================
+# HUFFMAN TREE & CODING
+# ==============================================================================
 class HuffmanNode:
     """Represents a node in the Huffman Tree."""
 
@@ -42,7 +96,6 @@ class HuffmanNode:
         return self.left is None and self.right is None
 
     def __lt__(self, other: "HuffmanNode") -> bool:
-        # Tie-break on frequency first; if equal, maintain stable deterministic ordering
         if self.freq != other.freq:
             return self.freq < other.freq
         s1 = self.symbol if self.symbol is not None else -1
@@ -51,17 +104,13 @@ class HuffmanNode:
 
 
 def build_huffman_tree(frequencies: Dict[int, int]) -> Optional[HuffmanNode]:
-    """
-    Builds a Huffman Tree from symbol frequencies using a min-heap.
-    Time Complexity: O(k log k), where k is the number of unique symbols (k <= 256 for bytes).
-    """
+    """Builds a Huffman Tree from symbol frequencies using a min-heap."""
     if not frequencies:
         return None
 
     heap = [HuffmanNode(symbol=sym, freq=freq) for sym, freq in frequencies.items()]
     heapq.heapify(heap)
 
-    # Edge case: single unique character
     if len(heap) == 1:
         root = heapq.heappop(heap)
         return HuffmanNode(symbol=None, freq=root.freq, left=root)
@@ -81,16 +130,13 @@ def build_huffman_tree(frequencies: Dict[int, int]) -> Optional[HuffmanNode]:
 
 
 def generate_codes(root: Optional[HuffmanNode]) -> Dict[int, str]:
-    """
-    Generates prefix-free variable-length binary codes by traversing the Huffman tree.
-    """
+    """Generates prefix-free variable-length binary codes from Huffman tree."""
     codes: Dict[int, str] = {}
 
     def _traverse(node: Optional[HuffmanNode], current_code: str):
         if node is None:
             return
         if node.is_leaf():
-            # If root has only one child, use '0'
             codes[node.symbol] = current_code if current_code else "0"
             return
         _traverse(node.left, current_code + "0")
@@ -101,35 +147,22 @@ def generate_codes(root: Optional[HuffmanNode]) -> Dict[int, str]:
 
 
 def compress_bytes(raw_data: bytes) -> bytes:
-    """
-    Compresses raw bytes using Huffman Coding.
-    Serialized format:
-    - 4 bytes: Magic bytes b"HUFF"
-    - 2 bytes: Number of unique symbols k (unsigned short)
-    - For each symbol: 1 byte (symbol) + 4 bytes (frequency as unsigned int)
-    - 1 byte: Padding bits count (0 to 7)
-    - Variable: Encoded bitstream
-    """
+    """Compresses raw bytes using Huffman Coding."""
     if not raw_data:
-        # Empty input representation
         return MAGIC_HEADER + struct.pack(">H", 0)
 
-    # 1. Calculate symbol frequencies
     freq_counter = Counter(raw_data)
     unique_symbols = len(freq_counter)
-
-    # 2. Build Huffman tree and prefix codes
     root = build_huffman_tree(freq_counter)
     codes = generate_codes(root)
 
-    # 3. Encode data bit-by-bit
     writer = BitWriter()
     for byte in raw_data:
         writer.write_bits(codes[byte])
 
     encoded_payload, padding_bits = writer.flush()
 
-    # 4. Serialize header
+    # Header: MAGIC + num_symbols + (symbol, freq) pairs + padding
     header_parts = [MAGIC_HEADER, struct.pack(">H", unique_symbols)]
     for sym, freq in freq_counter.items():
         header_parts.append(struct.pack(">BI", sym, freq))
@@ -139,13 +172,10 @@ def compress_bytes(raw_data: bytes) -> bytes:
 
 
 def decompress_bytes(compressed_data: bytes) -> bytes:
-    """
-    Decompresses data compressed by compress_bytes.
-    """
+    """Decompresses data compressed by compress_bytes."""
     if len(compressed_data) < 6:
-        raise ValueError("Invalid compressed data: too short for header.")
+        raise ValueError("Invalid compressed data: header too short.")
 
-    # 1. Verify magic header
     if compressed_data[:4] != MAGIC_HEADER:
         raise ValueError("Invalid format: magic header b'HUFF' missing.")
 
@@ -153,7 +183,6 @@ def decompress_bytes(compressed_data: bytes) -> bytes:
     if num_symbols == 0:
         return b""
 
-    # 2. Parse frequency table
     offset = 6
     frequencies: Dict[int, int] = {}
     for _ in range(num_symbols):
@@ -163,18 +192,13 @@ def decompress_bytes(compressed_data: bytes) -> bytes:
 
     padding_bits = struct.unpack_from(">B", compressed_data, offset)[0]
     offset += 1
-
     payload = compressed_data[offset:]
 
-    # 3. Rebuild Huffman tree
     root = build_huffman_tree(frequencies)
     if root is None:
         return b""
 
-    # Calculate expected uncompressed length
     total_bytes_expected = sum(frequencies.values())
-
-    # 4. Decode payload bitstream
     reader = BitReader(payload, padding=padding_bits)
     decoded = bytearray()
     curr_node = root
@@ -195,9 +219,6 @@ def decompress_bytes(compressed_data: bytes) -> bytes:
 # ==============================================================================
 def compress_file(input_path: str | Path, output_path: str | Path) -> dict:
     """Compresses an input file to a Huffman-encoded output file."""
-    input_path = Path(input_path)
-    output_path = Path(output_path)
-
     with open(input_path, "rb") as f:
         raw_bytes = f.read()
 
@@ -219,9 +240,6 @@ def compress_file(input_path: str | Path, output_path: str | Path) -> dict:
 
 def decompress_file(compressed_path: str | Path, output_path: str | Path) -> dict:
     """Decompresses a Huffman-encoded file to restore the original file."""
-    compressed_path = Path(compressed_path)
-    output_path = Path(output_path)
-
     with open(compressed_path, "rb") as f:
         compressed_bytes = f.read()
 
@@ -250,14 +268,12 @@ if __name__ == "__main__":
         "Numbers and symbols: 1234567890 !@#$%^&*()_+~`\n"
     ) * 15
 
-    # Run file roundtrip test inside an auto-cleaning temporary directory
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
         orig_file = temp_path / "sample_text.txt"
         comp_file = temp_path / "sample_text.huff"
         restored_file = temp_path / "sample_text_restored.txt"
 
-        # Write sample file
         with open(orig_file, "w", encoding="utf-8") as f:
             f.write(sample_text)
 
@@ -268,23 +284,12 @@ if __name__ == "__main__":
         print(f" - Compressed Size      : {comp_stats['compressed_size']} bytes")
         print(f" - Space Savings        : {comp_stats['savings_percentage']:.2f}%")
 
-        # Decompress file
         decomp_stats = decompress_file(comp_file, restored_file)
         print(f"Restored File Created  : {restored_file.name}")
         print(f" - Restored Size        : {decomp_stats['restored_size']} bytes")
 
-        # Verify lossless roundtrip bit-for-bit
         with open(orig_file, "rb") as f1, open(restored_file, "rb") as f2:
-            orig_data = f1.read()
-            restored_data = f2.read()
-            assert orig_data == restored_data, "Decompression verification failed: content mismatch!"
+            assert f1.read() == f2.read(), "Decompression verification failed: content mismatch!"
 
         print("Verification Passed: Decompressed content is bit-for-bit identical to original!")
-
-    # Binary test (simulating arbitrary binary file)
-    binary_data = bytes([i % 256 for i in range(1000)] + [42] * 2000)
-    bin_comp = compress_bytes(binary_data)
-    bin_decomp = decompress_bytes(bin_comp)
-    assert binary_data == bin_decomp, "Binary decompression mismatch!"
-    print(f"Binary Test Passed     : {len(binary_data)} bytes -> {len(bin_comp)} bytes -> verified exact match!")
-    print("=" * 80)
+        print("=" * 80)

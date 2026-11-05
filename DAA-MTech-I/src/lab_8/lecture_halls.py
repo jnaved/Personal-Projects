@@ -7,17 +7,21 @@ and implement this algorithm.
 """
 
 import heapq
-import sys
 from collections import defaultdict
-from pathlib import Path
+from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
-# Add workspace root to sys.path
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
-from utils.lab_8.interval import Activity, verify_schedule_validity
+@dataclass
+class Activity:
+    id: int
+    start: float
+    finish: float
+    name: str = ""
+
+    @property
+    def duration(self) -> float:
+        return self.finish - self.start
 
 
 def schedule_lecture_halls(
@@ -42,22 +46,14 @@ def schedule_lecture_halls(
            of the last activity assigned to that hall: (free_time, hall_id).
         3. For each activity in sorted order:
            a. If min-heap is non-empty and root.free_time <= activity.start:
-              - Hall is free! Reuse this hall. Pop it, assign the activity, and push (activity.finish, hall_id).
+              - Reuse this hall. Pop it, assign the activity, and push (activity.finish, hall_id).
            b. Else:
-              - All current halls are busy at activity.start. Allocate a new lecture hall.
+              - All current halls are busy. Allocate a new lecture hall.
               - Assign the activity and push (activity.finish, new_hall_id).
-
-    Optimality Justification:
-        Let 'depth' d be the maximum number of mutually overlapping activities at any instant in time.
-        Every valid schedule requires at least d lecture halls.
-        The greedy algorithm never opens a new hall unless all existing halls are simultaneously
-        occupied at the start time of the current activity (demonstrating an overlap depth equal
-        to the number of allocated halls). Thus, it never allocates more than d halls.
-        Therefore, the number of lecture halls used is guaranteed to be minimal.
 
     Complexity:
         - Sorting: O(n log n)
-        - Min-Heap operations: n operations on a heap of size at most d (where d <= n), taking O(n log d).
+        - Min-Heap operations: O(n log d), where d <= n is the number of halls.
         Total Time Complexity: O(n log n).
         Total Space Complexity: O(n).
     """
@@ -131,8 +127,11 @@ if __name__ == "__main__":
         print()
 
     # Verification: Ensure no two overlapping activities are in the same hall
-    is_valid = verify_schedule_validity(schedules)
-    assert is_valid, "Invalid schedule detected! Overlapping activities in same hall."
+    for hall_id, acts in schedules.items():
+        sorted_acts = sorted(acts, key=lambda a: a.start)
+        for i in range(len(sorted_acts) - 1):
+            assert sorted_acts[i].finish <= sorted_acts[i + 1].start, "Invalid schedule: overlap in hall!"
+
     print("=" * 75)
     print("Verification Passed: No overlapping activities share any lecture hall!")
     print("=" * 75)
