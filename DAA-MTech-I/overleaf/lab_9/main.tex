@@ -1,0 +1,684 @@
+\documentclass[12pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{newtxtext,newtxmath}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{xcolor}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+
+% Keep entire document at 12 pt
+\AtBeginDocument{
+    \fontsize{12pt}{14pt}\selectfont
+}
+
+% ------------------------------------------------
+% Header Configuration
+% ------------------------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Name: \underline{Shaik Jnaved}}
+\fancyhead[R]{Enrollment No.: \underline{P26DS001}}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{15pt}
+
+% ------------------------------------------------
+% Code Formatting Configuration
+% ------------------------------------------------
+\lstset{
+    basicstyle=\ttfamily\fontsize{8.5pt}{10.5pt}\selectfont,
+    breaklines=true,
+    frame=single,
+    columns=fullflexible,
+    keepspaces=true,
+    showstringspaces=false,
+    keywordstyle=\color{blue}\bfseries,
+    commentstyle=\color{gray}\itshape,
+    stringstyle=\color{teal}
+}
+
+\begin{document}
+
+% ==============================================================================
+% TITLE BANNER
+% ==============================================================================
+\begin{center}
+\textbf{\Large SARDAR VALLABHBHAI NATIONAL INSTITUTE OF TECHNOLOGY, SURAT}\\[4pt]
+\textbf{\large Department of Computer Science \& Engineering}\\[3pt]
+\textbf{\large CS103 / CSDS103: Design and Analysis of Algorithms}\\[3pt]
+\textbf{\large M.Tech. (DS) I Year -- Semester I}\\[4pt]
+\textbf{\Large Lab Assignment 9: Advanced Graph Algorithms, Greedy Strategies, and Network Flows}
+\end{center}
+
+\vspace{0.2cm}
+\hrule
+\vspace{0.4cm}
+
+\textbf{Overview \& Scope}:\\
+This laboratory report presents rigorous mathematical formulation, design, complexity analysis, and empirical verification for six canonical algorithmic problems across graph theory, computational geometry, network flows, and greedy optimization:
+\begin{enumerate}
+    \item \textbf{Assignment 1}: Optimal Cryptographic Software License Purchase Schedule under Exponential Inflation via Greedy Ordering.
+    \item \textbf{Assignment 2}: Linear-Time Directed Eulerian Circuit Construction using Hierholzer's Algorithm.
+    \item \textbf{Assignment 3}: 3D Pick-up Sticks Geometric Relation Routine and Topological Sort Scheduling.
+    \item \textbf{Assignment 4}: Linear-Time Two-Colorability (Bipartiteness) Testing and Conflict-Free Graph Partitioning.
+    \item \textbf{Assignment 5}: Maximum Cardinality Bipartite Matching via Network Flow Reduction and Edmonds-Karp Max-Flow.
+    \item \textbf{Assignment 6}: Multi-Criteria Airline Flight Itinerary Optimization using Dijkstra's Shortest Path Algorithm.
+\end{enumerate}
+
+\vspace{0.3cm}
+
+% ==============================================================================
+% ASSIGNMENT 1: SOFTWARE LICENSES
+% ==============================================================================
+\section*{Assignment 1: Optimal Cryptographic Software License Purchase Schedule}
+
+\subsection*{1.1 Problem Statement and Mathematical Formulation}
+\textbf{Problem}: A security consultancy needs to acquire licenses for $n$ distinct cryptographic software packages. Regulations restrict purchases to at most one license per month. At month $t = 0$, every license has a base price of $C_0 = \text{Rs. } 1000$. However, the price of license $j$ escalates at an exponential monthly rate $r_j > 1$. If license $j$ is bought $t$ months from now ($t \in \{0, 1, \dots, n-1\}$), its cost is:
+\[
+\text{Cost}(j, t) = C_0 \cdot r_j^t
+\]
+All growth rates $r_1, r_2, \dots, r_n$ are distinct positive real numbers strictly greater than 1. The objective is to determine a permutation $\pi$ of the $n$ licenses minimizing the total expenditure:
+\[
+\min_{\pi} \sum_{t=0}^{n-1} C_0 \cdot r_{\pi(t)}^t
+\]
+
+\textbf{Proof of Optimality (Greedy Choice via Exchange Argument)}:
+\begin{itemize}
+    \item \textbf{Greedy Rule}: Sort and purchase licenses in strictly non-increasing order of their monthly growth rates:
+    \[
+    r_{\pi(0)} > r_{\pi(1)} > \dots > r_{\pi(n-1)}
+    \]
+    \item \textbf{Exchange Argument}: Suppose an optimal schedule $\text{OPT}$ contains an inversion: there exist two consecutively purchased licenses $a$ at month $t$ and $b$ at month $t+1$ such that $r_a < r_b$.
+    \item The joint cost contributed by these two licenses in $\text{OPT}$ is:
+    \[
+    C_{\text{OPT}} = C_0 \left( r_a^t + r_b^{t+1} \right)
+    \]
+    \item Invert the purchase order to yield schedule $\text{OPT}'$ (buying $b$ at month $t$ and $a$ at month $t+1$):
+    \[
+    C_{\text{OPT}'} = C_0 \left( r_b^t + r_a^{t+1} \right)
+    \]
+    \item Evaluating the cost difference:
+    \[
+    C_{\text{OPT}} - C_{\text{OPT}'} = C_0 \left[ (r_b^{t+1} - r_b^t) - (r_a^{t+1} - r_a^t) \right] = C_0 \left[ r_b^t(r_b - 1) - r_a^t(r_a - 1) \right]
+    \]
+    \item Since $r_b > r_a > 1$ and $t \ge 0$, it follows that $r_b^t \ge r_a^t > 0$ and $(r_b - 1) > (r_a - 1) > 0$.
+    \item Therefore, $C_{\text{OPT}} - C_{\text{OPT}'} > 0 \implies C_{\text{OPT}'} < C_{\text{OPT}}$, strictly reducing the total cost.
+    \item Because every inversion strictly increases the cost, the greedy sorted order must achieve the global minimum.
+\end{itemize}
+
+\subsection*{1.2 Python Implementation (\texttt{software\_licenses.py})}
+\begin{lstlisting}[language=Python]
+from dataclasses import dataclass
+from typing import List, Tuple
+
+@dataclass
+class License:
+    name: str
+    rate: float
+    base_cost: float = 1000.0
+
+def optimal_license_schedule(
+    licenses: List[License],
+) -> Tuple[List[Tuple[int, License, float]], float]:
+    sorted_licenses = sorted(licenses, key=lambda lic: lic.rate, reverse=True)
+    schedule = []
+    total_cost = 0.0
+
+    for month, lic in enumerate(sorted_licenses):
+        cost_at_t = lic.base_cost * (lic.rate ** month)
+        schedule.append((month, lic, cost_at_t))
+        total_cost += cost_at_t
+
+    return schedule, total_cost
+\end{lstlisting}
+
+\subsection*{1.3 Theoretical Complexity Analysis}
+\begin{itemize}
+    \item \textbf{Sorting Time}: Sorting $n$ license rates takes $\mathcal{O}(n \log n)$ time.
+    \item \textbf{Schedule Generation}: A single linear scan evaluates exponential costs in $\mathcal{O}(n)$ time.
+    \item \textbf{Total Time Complexity}: $\mathcal{O}(n \log n)$.
+    \item \textbf{Auxiliary Space Complexity}: $\mathcal{O}(n)$ to store the ordered schedule.
+\end{itemize}
+
+\subsection*{1.4 Execution Output \& Verification}
+\begin{lstlisting}
+Month  | License Name              | Rate (r_j)   | Cost (Rs.)     
+-----------------------------------------------------------------
+Month 0  | Post-Quantum Signer       | 1.80         | Rs. 1000.00     
+Month 1  | RSA Key Manager           | 1.50         | Rs. 1500.00     
+Month 2  | Zero-Knowledge Prover     | 1.35         | Rs. 1822.50     
+Month 3  | AES Encryption Suite      | 1.20         | Rs. 1728.00     
+Month 4  | Elliptic Curve Tool       | 1.10         | Rs. 1464.10     
+-----------------------------------------------------------------
+Minimum Total Purchase Cost: Rs. 7514.60
+Verification Passed: Highest growth rates purchased earliest!
+\end{lstlisting}
+
+\newpage
+
+% ==============================================================================
+% ASSIGNMENT 2: EULERIAN CIRCUIT
+% ==============================================================================
+\section*{Assignment 2: Linear-Time Directed Eulerian Circuit Construction}
+
+\subsection*{2.1 Problem Formulation and Existence Theorem}
+\textbf{Definition}: An Eulerian circuit in a directed graph $G = (V, E)$ is a closed directed walk traversing every directed edge in $E$ exactly once.
+
+\textbf{Euler's Theorem for Directed Graphs}:
+A directed multigraph $G$ possesses an Eulerian circuit if and only if:
+\begin{enumerate}
+    \item \textbf{Degree Balance}: For every vertex $v \in V$, its in-degree equals its out-degree:
+    \[
+    d_{\text{in}}(v) = d_{\text{out}}(v) \quad \forall v \in V
+    \]
+    \item \textbf{Connectivity}: All vertices with non-zero degree ($d(v) > 0$) belong to a single connected component in the underlying undirected graph.
+\end{enumerate}
+
+\textbf{Hierholzer's Algorithm}:
+\begin{enumerate}
+    \item Choose an arbitrary starting vertex $s$ with $d_{\text{out}}(s) > 0$.
+    \item Maintain a stack for the current exploratory path. Follow unused outgoing edges from the current vertex, pushing newly visited vertices onto the stack.
+    \item When the vertex at the top of the stack has no remaining unused outgoing edges, pop it and append it to the circuit.
+    \item Upon exhausting all edges, reverse the circuit to recover the traversal sequence in forward chronological order.
+\end{enumerate}
+
+\subsection*{2.2 Python Implementation (\texttt{eulerian\_circuit.py})}
+\begin{lstlisting}[language=Python]
+from collections import defaultdict
+from typing import Dict, List, Optional, Tuple
+
+class DirectedGraph:
+    def __init__(self):
+        self.adj = defaultdict(list)
+        self.in_degree = defaultdict(int)
+        self.out_degree = defaultdict(int)
+        self.num_edges = 0
+
+    def add_edge(self, u: int, v: int) -> None:
+        self.adj[u].append(v)
+        self.out_degree[u] += 1
+        self.in_degree[v] += 1
+        self.num_edges += 1
+
+    def find_eulerian_circuit(self) -> Tuple[Optional[List[int]], str]:
+        # 1. Degree balance and connectivity verification
+        all_v = set(self.in_degree.keys()) | set(self.out_degree.keys())
+        start = None
+        for v in all_v:
+            if self.in_degree[v] != self.out_degree[v]:
+                return None, f"Vertex {v} unbalanced (in={self.in_degree[v]}, out={self.out_degree[v]})."
+            if self.out_degree[v] > 0 and start is None:
+                start = v
+
+        if self.num_edges == 0: return [], "Trivially Eulerian."
+
+        # 2. Hierholzer's Algorithm using backtrack stack
+        edge_lists = {u: list(neighbors) for u, neighbors in self.adj.items()}
+        circuit, stack = [], [start]
+
+        while stack:
+            curr = stack[-1]
+            if edge_lists.get(curr):
+                stack.append(edge_lists[curr].pop())
+            else:
+                circuit.append(stack.pop())
+
+        circuit.reverse()
+        if len(circuit) != self.num_edges + 1:
+            return None, "Graph contains disconnected edge components."
+        return circuit, "Eulerian circuit successfully constructed."
+\end{lstlisting}
+
+\subsection*{2.3 Complexity Analysis}
+\begin{itemize}
+    \item \textbf{Degree \& Connectivity Verification}: Incurs $\mathcal{O}(V + E)$ time.
+    \item \textbf{Hierholzer's Traversal}: Each directed edge is pushed onto the call stack once and popped in $\mathcal{O}(1)$ time using adjacency lists.
+    \item \textbf{Total Time Complexity}: $\mathcal{O}(V + E)$ (strictly optimal linear time).
+    \item \textbf{Auxiliary Space Complexity}: $\mathcal{O}(V + E)$ to maintain edge tracking buffers and the traversal stack.
+\end{itemize}
+
+\subsection*{2.4 Execution Output \& Verification}
+\begin{lstlisting}
+Graph 1 Edges: [(0, 1), (1, 2), (2, 0), (0, 3), (3, 4), (4, 0)]
+Status       : Eulerian circuit successfully constructed.
+Euler Circuit: 0 -> 3 -> 4 -> 0 -> 1 -> 2 -> 0
+Verification Passed: All edges visited exactly once in cycle!
+
+Graph 2 Edges: [(0, 1), (1, 2), (2, 0), (2, 3)]
+Status       : Vertex 2 unbalanced (in=1, out=2).
+Verification Passed: Correctly identified non-Eulerian directed graph.
+\end{lstlisting}
+
+\newpage
+
+% ==============================================================================
+% ASSIGNMENT 3: PICKUP STICKS
+% ==============================================================================
+\section*{Assignment 3: 3D Pick-up Sticks Geometric Relation Routine \& Scheduling}
+
+\subsection*{3.1 Algorithmic Formulation and 3D Line Intersection}
+\textbf{Problem}: Given $N$ non-vertical sticks in 3D space, each defined by two endpoints $(x_1, y_1, z_1)$ and $(x_2, y_2, z_2)$:
+\begin{enumerate}
+    \item[(a)] Determine whether stick $a$ is \textbf{above}, \textbf{below}, or \textbf{unrelated} to stick $b$.
+    \item[(b)] Determine whether all sticks can be picked up, and output a valid pickup sequence.
+\end{enumerate}
+
+\textbf{Geometric Routine}:
+\begin{itemize}
+    \item Parameterize stick $a$ and stick $b$ on the horizontal $xy$-plane:
+    \[
+    A(t) = A_1 + t(A_2 - A_1), \quad t \in [0, 1]
+    \]
+    \[
+    B(u) = B_1 + u(B_2 - B_1), \quad u \in [0, 1]
+    \]
+    \item Solve the linear system for the 2D projection intersection $(t, u)$ via Cramer's rule:
+    \[
+    D = \Delta x_a \Delta y_b - \Delta y_a \Delta x_b
+    \]
+    \item If $|D| < 10^{-9}$ (segments parallel) or $t, u \notin [0, 1]$, the sticks do not intersect in the top-down projection $\implies$ \textbf{unrelated}.
+    \item If $t, u \in [0, 1]$, compute the height of both sticks at the intersection point:
+    \[
+    z_a = z_{A1} + t(z_{A2} - z_{A1}), \qquad z_b = z_{B1} + u(z_{B2} - z_{B1})
+    \]
+    \item If $z_a > z_b$, stick $a$ rests on top of stick $b$ ($\mathbf{a \text{ is above } b}$).
+    \item If $z_a < z_b$, stick $a$ rests below stick $b$ ($\mathbf{a \text{ is below } b}$).
+\end{itemize}
+
+\textbf{Topological Scheduling}:
+A stick can only be picked up when no other stick lies on top of it. If stick $a$ is above stick $b$, $a$ must be removed before $b$, creating a directed precedence constraint $a \to b$. We run Kahn's algorithm: sticks with in-degree 0 (no sticks on top) are repeatedly picked up. If all $N$ sticks are eliminated, the sequence is valid; otherwise, a cycle exists (deadlock).
+
+\subsection*{3.2 Python Implementation (\texttt{pickup\_sticks.py})}
+\begin{lstlisting}[language=Python]
+from collections import defaultdict, deque
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple
+
+@dataclass
+class Stick:
+    id: int
+    p1: Tuple[float, float, float]
+    p2: Tuple[float, float, float]
+
+def check_stick_relation(a: Stick, b: Stick, eps: float = 1e-9) -> str:
+    dx_a, dy_a = a.p2[0] - a.p1[0], a.p2[1] - a.p1[1]
+    dx_b, dy_b = b.p2[0] - b.p1[0], b.p2[1] - b.p1[1]
+    denom = dx_a * dy_b - dy_a * dx_b
+
+    if abs(denom) < eps: return "unrelated"
+
+    dx_ab, dy_ab = b.p1[0] - a.p1[0], b.p1[1] - a.p1[1]
+    t = (dx_ab * dy_b - dy_ab * dx_b) / denom
+    u = (dx_ab * dy_a - dy_ab * dx_a) / denom
+
+    if -eps <= t <= 1.0 + eps and -eps <= u <= 1.0 + eps:
+        t_c, u_c = max(0.0, min(1.0, t)), max(0.0, min(1.0, u))
+        z_a = a.p1[2] + t_c * (a.p2[2] - a.p1[2])
+        z_b = b.p1[2] + u_c * (b.p2[2] - b.p1[2])
+        if z_a > z_b + eps: return "above"
+        elif z_a < z_b - eps: return "below"
+    return "unrelated"
+
+def find_pickup_sequence(sticks: List[Stick]) -> Tuple[bool, Optional[List[int]], str]:
+    n = len(sticks)
+    adj = defaultdict(list)
+    in_degree = {s.id: 0 for s in sticks}
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            rel = check_stick_relation(sticks[i], sticks[j])
+            if rel == "above":
+                adj[sticks[i].id].append(sticks[j].id)
+                in_degree[sticks[j].id] += 1
+            elif rel == "below":
+                adj[sticks[j].id].append(sticks[i].id)
+                in_degree[sticks[i].id] += 1
+
+    queue = deque([sid for sid, deg in in_degree.items() if deg == 0])
+    order = []
+    while queue:
+        curr = queue.popleft()
+        order.append(curr)
+        for nbr in adj[curr]:
+            in_degree[nbr] -= 1
+            if in_degree[nbr] == 0: queue.append(nbr)
+
+    if len(order) == n: return True, order, "Valid sequence found."
+    return False, None, "Cycle detected: Deadlock prevents full pickup."
+\end{lstlisting}
+
+\subsection*{3.3 Complexity Analysis}
+\begin{itemize}
+    \item \textbf{Pairwise Intersection Routine}: Evaluating all pairs of $N$ sticks requires $\binom{N}{2} = \mathcal{O}(N^2)$ checks.
+    \item \textbf{Topological Sort}: Kahn's algorithm operates on $V = N$ vertices and $E \le N^2$ edges in $\mathcal{O}(V + E) = \mathcal{O}(N^2)$ time.
+    \item \textbf{Total Time Complexity}: $\mathcal{O}(N^2)$.
+    \item \textbf{Space Complexity}: $\mathcal{O}(N^2)$ to store the dependency graph.
+\end{itemize}
+
+\subsection*{3.4 Execution Output \& Verification}
+\begin{lstlisting}
+--- (a) Pairwise Relation Routine Demonstration ---
+Relation(Stick 1, Stick 2): above (Expected: above)
+Relation(Stick 2, Stick 3): above (Expected: above)
+Relation(Stick 1, Stick 4): unrelated (Expected: unrelated)
+
+--- (b) Pickup Sequence Determination ---
+Status        : Valid pickup sequence found.
+Pickup Order  : [1, 4, 2, 3]
+Verification Passed: Valid topological stick pickup sequence generated!
+\end{lstlisting}
+
+\newpage
+
+% ==============================================================================
+% ASSIGNMENT 4: TWO-COLORABILITY
+% ==============================================================================
+\section*{Assignment 4: Linear-Time Two-Colorability Testing \& Applications}
+
+\subsection*{4.1 Theoretical Formulation and Bipartite Relationship}
+\textbf{Definition}: A graph $G = (V, E)$ is $k$-colorable if each vertex can be assigned one of $k$ colors such that no edge connects two vertices of identical color.
+
+\textbf{Relationship to Bipartite Graphs}:
+\begin{itemize}
+    \item \textbf{Equivalence Theorem}: A graph is \textbf{2-colorable if and only if it is bipartite}.
+    \item \textbf{Odd Cycle Characterization}: A graph is 2-colorable / bipartite if and only if it contains \textbf{no odd-length cycles}.
+    \item If a graph is 2-colorable with colors $\{0, 1\}$, partitioning vertices by color yields two disjoint sets $L = \{v \mid c(v) = 0\}$ and $R = \{v \mid c(v) = 1\}$. Every edge has one endpoint in $L$ and the other in $R$, satisfying the definition of a bipartite graph.
+\end{itemize}
+
+\textbf{Two Practical Applications}:
+\begin{enumerate}
+    \item \textbf{Maximum Matching and Assignment Problems}: Matching medical residents to hospitals, organ donors to recipients, or distributed compute jobs to worker nodes requires modeling conflict-free pairings over bipartite graphs.
+    \item \textbf{Conflict-Free Frequency and Register Allocation}: Determining whether wireless transmitters, exam timetables, or compiler variable registers can operate without interference across two alternating channels or time slots.
+\end{enumerate}
+
+\subsection*{4.2 Python Implementation (\texttt{two\_colorability.py})}
+\begin{lstlisting}[language=Python]
+from collections import defaultdict, deque
+from typing import Dict, List, Optional, Tuple
+
+def test_two_colorability(
+    adj: Dict[int, List[int]], vertices: List[int]
+) -> Tuple[bool, Optional[Dict[int, int]], Optional[Tuple[List[int], List[int]]], str]:
+    colors: Dict[int, int] = {v: -1 for v in vertices}
+
+    for start in vertices:
+        if colors[start] != -1: continue
+        colors[start] = 0
+        queue = deque([start])
+
+        while queue:
+            u = queue.popleft()
+            for v in adj[u]:
+                if colors[v] == -1:
+                    colors[v] = 1 - colors[u]
+                    queue.append(v)
+                elif colors[v] == colors[u]:
+                    return False, None, None, f"Odd cycle: ({u}, {v}) share color {colors[u]}."
+
+    set_L = [v for v, c in colors.items() if c == 0]
+    set_R = [v for v, c in colors.items() if c == 1]
+    return True, colors, (set_L, set_R), "Graph is 2-colorable (bipartite)."
+\end{lstlisting}
+
+\subsection*{4.3 Complexity Analysis}
+\begin{itemize}
+    \item \textbf{Time Complexity}: $\mathcal{O}(V + E)$ using Breadth-First Search (BFS) over adjacency lists.
+    \item \textbf{Space Complexity}: $\mathcal{O}(V)$ for the color map and BFS queue.
+\end{itemize}
+
+\subsection*{4.4 Execution Output \& Verification}
+\begin{lstlisting}
+Graph 1 (4-Cycle): Graph is 2-colorable (bipartite).
+ - Color Assignments: {1: 0, 2: 1, 3: 0, 4: 1}
+ - Bipartite Sets   : Set L = [1, 3], Set R = [2, 4]
+Verification Passed: Correctly identified 2-colorable graph!
+
+Graph 2 (Triangle / Odd Cycle): Odd cycle: (2, 3) share color 1.
+Verification Passed: Correctly rejected odd-cycle graph!
+\end{lstlisting}
+
+\newpage
+
+% ==============================================================================
+% ASSIGNMENT 5: BIPARTITE MATCHING VIA FLOW
+% ==============================================================================
+\section*{Assignment 5: Maximum Bipartite Matching via Max-Flow Reduction}
+
+\subsection*{5.1 Network Flow Reduction Principle}
+\textbf{Problem}: Given a bipartite graph $G = (L \cup R, E)$ where edges only connect vertices between independent sets $L$ and $R$, find the maximum-cardinality matching.
+
+\textbf{Construction of Flow Network $G'$}:
+\begin{enumerate}
+    \item Introduce a super-source $s$ and a super-sink $t$.
+    \item Construct directed edges $(s, u)$ with capacity $c(s, u) = 1$ for all $u \in L$.
+    \item Construct directed edges $(u, v)$ with capacity $c(u, v) = 1$ for all original edges $(u, v) \in E$ with $u \in L, v \in R$.
+    \item Construct directed edges $(v, t)$ with capacity $c(v, t) = 1$ for all $v \in R$.
+\end{enumerate}
+
+\textbf{Integrality Theorem and Equivalence}:
+Because all capacities are integral (equal to 1), the Integrality Theorem guarantees the existence of a maximum flow where every edge carries an integer flow $f(e) \in \{0, 1\}$.
+\begin{itemize}
+    \item At most 1 unit of flow leaves $s$ into each $u \in L$, guaranteeing each left vertex is matched at most once.
+    \item At most 1 unit of flow enters $t$ from each $v \in R$, guaranteeing each right vertex is matched at most once.
+    \item By flow conservation, the set of edges $(u, v) \in E$ with $f(u, v) = 1$ constitutes a valid matching.
+    \item Therefore, $\text{Value}(\text{Max-Flow}) = \text{Cardinality}(\text{Max-Matching})$.
+\end{itemize}
+
+\subsection*{5.2 Python Implementation (\texttt{bipartite\_matching.py})}
+\begin{lstlisting}[language=Python]
+from collections import defaultdict, deque
+from typing import Dict, List, Set, Tuple
+
+class FlowNetwork:
+    def __init__(self):
+        self.adj = defaultdict(list)
+        self.capacity = defaultdict(int)
+        self.flow = defaultdict(int)
+
+    def add_edge(self, u: str, v: str, cap: int):
+        self.adj[u].append(v)
+        self.adj[v].append(u)
+        self.capacity[(u, v)] = cap
+        self.capacity[(v, u)] = 0
+
+    def edmonds_karp_max_flow(self, source: str, sink: str) -> int:
+        max_flow = 0
+        parent = {}
+
+        while True:
+            visited = {source}
+            queue = deque([source])
+            found = False
+            while queue and not found:
+                curr = queue.popleft()
+                for nbr in self.adj[curr]:
+                    residual = self.capacity[(curr, nbr)] - self.flow[(curr, nbr)]
+                    if nbr not in visited and residual > 0:
+                        visited.add(nbr)
+                        parent[nbr] = curr
+                        if nbr == sink: found = True; break
+                        queue.append(nbr)
+            if not found: break
+
+            path_flow = min(self.capacity[(parent[c], c)] - self.flow[(parent[c], c)] 
+                            for c in parent if c == sink or c in parent.values())
+            curr = sink
+            while curr != source:
+                p = parent[curr]
+                self.flow[(p, curr)] += 1
+                self.flow[(curr, p)] -= 1
+                curr = p
+            max_flow += 1
+            parent.clear()
+        return max_flow
+\end{lstlisting}
+
+\subsection*{5.3 Complexity Analysis}
+\begin{itemize}
+    \item \textbf{Edmonds-Karp Complexity}: In general networks, Edmonds-Karp runs in $\mathcal{O}(V \cdot E^2)$.
+    \item \textbf{Unit Capacity Bipartite Bound}: Because unit edge capacities bound the maximum flow by $\min(|L|, |R|) \le V$, at most $V$ augmenting path augmentations occur. Each BFS takes $\mathcal{O}(E)$ time.
+    \item \textbf{Total Time Complexity}: $\mathcal{O}(V \cdot E)$.
+    \item \textbf{Space Complexity}: $\mathcal{O}(V + E)$ for residual graph storage.
+\end{itemize}
+
+\subsection*{5.4 Execution Output \& Verification}
+\begin{lstlisting}
+Set L (Applicants) : ['Alice', 'Bob', 'Charlie', 'Diana']
+Set R (Job Roles)  : ['Software Engineer', 'Data Scientist', 'Cybersecurity Analyst', 'DevOps Engineer']
+Available Edges    : 7 candidate qualifications
+
+Maximum Matching Size (Max-Flow): 4
+Optimal Assigned Pairs:
+   * Alice      <---> Software Engineer
+   * Bob        <---> Cybersecurity Analyst
+   * Charlie    <---> Data Scientist
+   * Diana      <---> DevOps Engineer
+Verification Passed: Valid maximum cardinality bipartite matching obtained!
+\end{lstlisting}
+
+\newpage
+
+% ==============================================================================
+% ASSIGNMENT 6: FLIGHT SCHEDULING
+% ==============================================================================
+\section*{Assignment 6: Airline Flight Route Optimization (Dijkstra's Algorithm)}
+
+\subsection*{6.1 Problem Statement and Algorithmic Design}
+\textbf{Problem}: A traveler wishes to journey from origin city $A$ to destination city $B$. Flight networks are modeled as a directed graph where vertices represent metropolitan airports, and directed edges represent scheduled flights endowed with dual cost metrics:
+\begin{enumerate}
+    \item \textbf{Monetary Cost}: Fare in Rupees ($C_{uv} > 0$).
+    \item \textbf{Travel Time}: Flight flight duration in hours ($T_{uv} > 0$).
+\end{enumerate}
+The algorithm must determine the shortest travel itinerary minimizing either total cost or total flight duration using Dijkstra's single-source shortest path algorithm.
+
+\subsection*{6.2 Python Implementation (\texttt{flight\_scheduling.py})}
+\begin{lstlisting}[language=Python]
+import heapq
+from collections import defaultdict
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple
+
+@dataclass
+class Flight:
+    origin: str
+    destination: str
+    airline: str
+    flight_num: str
+    duration_hours: float
+    cost_inr: float
+
+class FlightNetwork:
+    def __init__(self):
+        self.adj = defaultdict(list)
+        self.cities = set()
+
+    def add_flight(self, orig, dest, airline, fnum, dur, cost):
+        f = Flight(orig, dest, airline, fnum, dur, cost)
+        self.adj[orig].append(f)
+        self.cities.update([orig, dest])
+
+    def find_shortest_itinerary(
+        self, source: str, target: str, criterion: str = "cost"
+    ) -> Tuple[Optional[float], Optional[List[Flight]], str]:
+        pq = [(0.0, source)]
+        dist = {source: 0.0}
+        prev_flight = {}
+
+        while pq:
+            d_curr, curr = heapq.heappop(pq)
+            if d_curr > dist.get(curr, float("inf")): continue
+            if curr == target: break
+
+            for flight in self.adj[curr]:
+                w = flight.cost_inr if criterion == "cost" else flight.duration_hours
+                if d_curr + w < dist.get(flight.destination, float("inf")):
+                    dist[flight.destination] = d_curr + w
+                    prev_flight[flight.destination] = (curr, flight)
+                    heapq.heappush(pq, (d_curr + w, flight.destination))
+
+        if target not in dist: return None, None, "No viable route."
+
+        itinerary, curr = [], target
+        while curr != source:
+            prev_city, fl = prev_flight[curr]
+            itinerary.append(fl)
+            curr = prev_city
+        itinerary.reverse()
+        return dist[target], itinerary, f"Optimal route found for {criterion}."
+\end{lstlisting}
+
+\subsection*{6.3 Complexity Analysis}
+\begin{itemize}
+    \item \textbf{Time Complexity}: Using a min-priority queue (min-heap), Dijkstra's algorithm processes each vertex and relaxes each directed flight edge in $\mathcal{O}((V + E) \log V)$ time.
+    \item \textbf{Auxiliary Space Complexity}: $\mathcal{O}(V + E)$ to maintain graph adjacency and predecessor pointers.
+\end{itemize}
+
+\subsection*{6.4 Execution Output \& Verification}
+\begin{lstlisting}
+Journey Planning: Jammu ---> Bengaluru
+
+--- 1. Optimization Criterion: MINIMUM COST (INR) ---
+Status: Optimal route found optimizing for cost.
+Total Cost: Rs. 10700.00
+Flight Route:
+  Leg 1: Jammu -> Delhi via Air India (AI-822) | Duration: 1.5h | Cost: Rs. 4500.00
+  Leg 2: Delhi -> Bengaluru via IndiGo (6E-501) | Duration: 2.8h | Cost: Rs. 6200.00
+Total Flight Time: 4.3 hours
+
+--- 2. Optimization Criterion: MINIMUM TRAVEL TIME (Hours) ---
+Status: Optimal route found optimizing for time.
+Total Duration: 4.3 hours
+Flight Route:
+  Leg 1: Jammu -> Delhi via Air India (AI-822) | Duration: 1.5h | Cost: Rs. 4500.00
+  Leg 2: Delhi -> Bengaluru via IndiGo (6E-501) | Duration: 2.8h | Cost: Rs. 6200.00
+Total Monetary Cost: Rs. 10700.00
+Verification Passed: Dijkstra shortest-path routes successfully computed!
+\end{lstlisting}
+
+\newpage
+
+% ==============================================================================
+% SUMMARY AND CONCLUSION
+% ==============================================================================
+\section*{Laboratory Summary \& Comprehensive Complexity Bounds}
+
+Table \ref{tab:lab9_summary} aggregates the core algorithmic classifications, optimal paradigms, and theoretical complexity bounds established across all six assignments.
+
+\begin{table}[H]
+\centering
+\caption{Comprehensive Algorithmic Bounds for Lab Assignment 9.}
+\label{tab:lab9_summary}
+\vspace{0.2cm}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{lllll}
+\toprule
+\textbf{Assignment} & \textbf{Problem Domain} & \textbf{Algorithmic Paradigm} & \textbf{Time Complexity} & \textbf{Space Complexity} \\
+\midrule
+\textbf{Assignment 1} & Software License Scheduling  & Greedy Strategy (Exchange Argument)  & $\mathcal{O}(n \log n)$            & $\mathcal{O}(n)$ \\
+\textbf{Assignment 2} & Directed Eulerian Circuit    & Hierholzer's Backtrack Traversal     & $\mathcal{O}(V + E)$               & $\mathcal{O}(V + E)$ \\
+\textbf{Assignment 3} & 3D Pick-up Sticks Routine    & Line Intersection \& Kahn's DAG Sort & $\mathcal{O}(N^2)$                 & $\mathcal{O}(N^2)$ \\
+\textbf{Assignment 4} & Two-Colorability Testing     & Breadth-First Search (BFS)           & $\mathcal{O}(V + E)$               & $\mathcal{O}(V)$ \\
+\textbf{Assignment 5} & Maximum Bipartite Matching   & Network Flow Reduction (Edmonds-Karp)& $\mathcal{O}(V \cdot E)$           & $\mathcal{O}(V + E)$ \\
+\textbf{Assignment 6} & Flight Route Optimization    & Dijkstra's Shortest Path             & $\mathcal{O}((V + E) \log V)$      & $\mathcal{O}(V + E)$ \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\subsection*{Conclusion}
+The algorithmic investigations conducted across Lab Assignment 9 illustrate several fundamental principles:
+\begin{enumerate}
+    \item \textbf{Power of Exchange Arguments}: Greedy rate sorting in software license purchases provably minimizes exponential cost divergence through local pairwise exchange.
+    \item \textbf{Optimal Linear-Time Graph Traversals}: Both Eulerian circuit detection (Hierholzer's) and 2-colorability testing (alternating BFS) run in optimal $\mathcal{O}(V + E)$ time, bypassing brute-force path enumeration.
+    \item \textbf{Bridging Geometry and Graph Scheduling}: Resolving 3D spatial overlaps into directed dependency arcs allows topological sorting to determine valid sequential actions or detect deadlock conditions.
+    \item \textbf{Reductions to Network Flow}: Complex structural matching problems (bipartite matching) can be seamlessly modeled and resolved through polynomial-time max-flow cuts, grounded by the Integrality Theorem.
+\end{enumerate}
+
+\end{document}
