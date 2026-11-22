@@ -1,0 +1,821 @@
+\documentclass[12pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{newtxtext,newtxmath}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{xcolor}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+
+% Keep entire document at 12 pt
+\AtBeginDocument{
+    \fontsize{12pt}{14pt}\selectfont
+}
+
+% ------------------------------------------------
+% Header Configuration
+% ------------------------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Name: \underline{Shaik Jnaved}}
+\fancyhead[R]{Enrollment No.: \underline{P26DS001}}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{15pt}
+
+% ------------------------------------------------
+% Code Formatting Configuration
+% ------------------------------------------------
+\lstset{
+    basicstyle=\ttfamily\fontsize{8.5pt}{10.5pt}\selectfont,
+    breaklines=true,
+    frame=single,
+    columns=fullflexible,
+    keepspaces=true,
+    showstringspaces=false,
+    keywordstyle=\color{blue}\bfseries,
+    commentstyle=\color{gray}\itshape,
+    stringstyle=\color{teal}
+}
+
+\begin{document}
+
+% ==============================================================================
+% TITLE BANNER
+% ==============================================================================
+\begin{center}
+\textbf{\Large SARDAR VALLABHBHAI NATIONAL INSTITUTE OF TECHNOLOGY, SURAT}\\[4pt]
+\textbf{\large Department of Computer Science \& Engineering}\\[3pt]
+\textbf{\large CS103 / CSDS103: Design and Analysis of Algorithms}\\[3pt]
+\textbf{\large M.Tech. (DS) I Year -- Semester I}\\[4pt]
+\textbf{\Large Lab Assignment 11: Minimum Arborescence, Shortest Paths, Arbitrage Detection, Project DAG Scheduling, and Campus Navigation}
+\end{center}
+
+\vspace{0.2cm}
+\hrule
+\vspace{0.4cm}
+
+\textbf{Overview \& Scope}:\\
+This laboratory report presents comprehensive algorithmic designs, mathematical formulations, asymptotic complexity proofs, modular Python implementations, and empirical verifications for five core graph optimization problems:
+\begin{enumerate}
+    \item \textbf{Assignment 1}: Design a Minimum-Cost One-Way Delivery Network using Chu-Liu / Edmonds' Minimum Arborescence Algorithm.
+    \item \textbf{Assignment 2}: Emergency Ambulance Route Finder on Weighted Urban Road Networks using Dijkstra's Algorithm.
+    \item \textbf{Assignment 3}: Currency Exchange Arbitrage Detection via Logarithmic Weight Transformation and Bellman--Ford Negative Cycle Detection.
+    \item \textbf{Assignment 4}: Software Project Scheduling, Topological Ordering, and Critical Path Method (CPM) using Directed Acyclic Graphs (DAGs).
+    \item \textbf{Assignment 5}: Campus Walkway Route Navigation and Proximity Radius Querying using Breadth-First Search (BFS).
+\end{enumerate}
+
+\vspace{0.3cm}
+
+% ==============================================================================
+% ASSIGNMENT 1: MINIMUM ARBORESCENCE
+% ==============================================================================
+\section*{Assignment 1: Minimum-Cost One-Way Delivery Network Using Minimum Arborescence}
+
+\subsection*{1.1 Problem Statement and Mathematical Formulation}
+\textbf{Problem Description}: A logistics enterprise operates a central distribution warehouse $r \in V$ and a collection of regional delivery centers $V \setminus \{r\}$. Feasible one-way transportation corridors between centers are represented by directed edges $E$ with associated non-negative operational costs $w: E \to \mathbb{R}^+$. The objective is to design a minimum-cost directed distribution topology such that:
+\begin{enumerate}
+    \item Every regional distribution center $v \in V \setminus \{r\}$ is reachable from the central warehouse root $r$.
+    \item Each non-root regional center has exactly one incoming delivery corridor ($d_{\text{in}}(v) = 1$ for all $v \neq r$).
+    \item The root warehouse has zero incoming delivery corridors ($d_{\text{in}}(r) = 0$).
+    \item The total delivery network expenditure $\sum_{e \in T} w(e)$ is minimized.
+\end{enumerate}
+
+\textbf{Mathematical Model: Minimum Spanning Arborescence}:\\
+Let $G = (V, E, w)$ be a directed weighted graph. An \textit{arborescence} rooted at $r$ is a directed subgraph $T = (V, E_T)$ that forms a directed tree with all edges directed away from $r$. The optimization problem is:
+\[
+\min_{E_T \subseteq E} \sum_{e \in E_T} w(e) \quad \text{subject to } T \text{ is an arborescence rooted at } r.
+\]
+
+\textbf{Chu-Liu / Edmonds' Algorithm}:
+\begin{enumerate}
+    \item \textbf{Cheapest Incoming Edge Selection}: For each non-root vertex $v \in V \setminus \{r\}$, select an incoming edge $e_v = (u, v)$ minimizing $w(u, v)$:
+    \[
+    \pi(v) = \arg\min_{(u, v) \in E} w(u, v), \quad w_{\min}(v) = \min_{(u, v) \in E} w(u, v)
+    \]
+    If any non-root vertex lacks an incoming edge, no valid arborescence exists.
+    \item \textbf{Cycle Detection}: Construct the predecessor subgraph $H = (V, \{(\pi(v), v) : v \in V \setminus \{r\}\})$.
+    \begin{itemize}
+        \item If $H$ contains no directed cycles, then $H$ is a minimum arborescence.
+        \item If $H$ contains one or more directed cycles, let $C$ be one such directed cycle.
+    \end{itemize}
+    \item \textbf{Cycle Contraction and Edge Reweighting}:
+    Contract all vertices belonging to cycle $C$ into a single pseudo-vertex $v_C$.
+    For any directed edge $e = (u, v)$ originating outside the cycle ($u \notin C$) and terminating inside the cycle ($v \in C$), modify its cost as:
+    \[
+    w'(u, v_C) = w(u, v) - w_{\min}(v)
+    \]
+    Edges internal to $C$ are removed from the contracted graph, while edges directed outward from $C$ retain their original weights.
+    \item \textbf{Recursive Invocation \& Unwinding}: Recursively compute the minimum arborescence on the contracted graph. When expanding $v_C$ back to cycle $C$, exactly one edge enters $v_C$ targeting some internal vertex $v^* \in C$. In the final arborescence, include this external incoming edge and all internal cycle edges $\{(\pi(v), v) : v \in C \setminus \{v^*\}\}$, omitting the internal incoming edge to $v^*$.
+\end{enumerate}
+
+\subsection*{1.2 Python Implementation (\texttt{minimum\_arborescence.py})}
+\begin{lstlisting}[language=Python]
+from collections import defaultdict
+from typing import Dict, List, Optional, Set, Tuple
+
+class DeliveryNetwork:
+    """Represents a directed delivery network of warehouses and distribution centers."""
+    def __init__(self, root: str):
+        self.root: str = root
+        self.nodes: Set[str] = {root}
+        self.edges: List[Tuple[str, str, float]] = []
+
+    def add_route(self, u: str, v: str, cost: float) -> None:
+        self.nodes.add(u); self.nodes.add(v)
+        self.edges.append((u, v, cost))
+
+    def find_minimum_delivery_network(self) -> Tuple[Optional[List[Tuple[str, str, float]]], float]:
+        node_list = sorted(list(self.nodes))
+        node_to_idx = {name: idx for idx, name in enumerate(node_list)}
+        idx_to_name = {idx: name for idx, name in enumerate(node_list)}
+        root_idx = node_to_idx[self.root]
+        indexed_edges = [(node_to_idx[u], node_to_idx[v], cost) for u, v, cost in self.edges]
+
+        chosen_idx, total_cost = self._chu_liu_edmonds(len(node_list), indexed_edges, root_idx)
+        if chosen_idx is None:
+            return None, float("inf")
+        chosen_routes = [(idx_to_name[u], idx_to_name[v], cost) for u, v, cost in chosen_idx]
+        return chosen_routes, total_cost
+
+    @staticmethod
+    def _chu_liu_edmonds(n: int, orig_edges: List[Tuple[int, int, float]], root: int):
+        curr_n, curr_root = n, root
+        curr_edges = [(u, v, float(w), idx) for idx, (u, v, w) in enumerate(orig_edges)]
+        history = []
+
+        while True:
+            min_in = {}
+            for u, v, w, eid in curr_edges:
+                if v == curr_root or u == v:
+                    continue
+                if v not in min_in or w < min_in[v][2]:
+                    min_in[v] = (u, v, w, eid)
+
+            for v in range(curr_n):
+                if v != curr_root and v not in min_in:
+                    return None, float("inf")
+
+            parent = {v: min_in[v][0] for v in min_in}
+            cycle = []
+            visited = [0] * curr_n
+            for i in range(curr_n):
+                if i == curr_root or visited[i] != 0:
+                    continue
+                curr, path = i, []
+                while curr != curr_root and visited[curr] == 0:
+                    visited[curr] = 1; path.append(curr)
+                    curr = parent.get(curr, curr_root)
+                if curr != curr_root and visited[curr] == 1:
+                    cycle = path[path.index(curr):]
+                    break
+                for node in path:
+                    visited[node] = 2
+
+            if not cycle:
+                chosen_eids = {min_in[v][3] for v in min_in}
+                break
+
+            cycle_set = set(cycle)
+            new_id, cnt = {}, 0
+            for v in range(curr_n):
+                if v not in cycle_set:
+                    new_id[v] = cnt; cnt += 1
+            cycle_rep = cnt
+            for v in cycle:
+                new_id[v] = cycle_rep
+
+            entering_node = {}
+            new_edges = []
+            for u, v, w, eid in curr_edges:
+                if u in cycle_set and v in cycle_set:
+                    continue
+                elif u not in cycle_set and v in cycle_set:
+                    entering_node[eid] = v
+                    new_edges.append((new_id[u], cycle_rep, w - min_in[v][2], eid))
+                else:
+                    new_edges.append((new_id[u], new_id[v], w, eid))
+
+            history.append({"cycle": cycle, "min_in": min_in, "entering_node": entering_node})
+            curr_edges, curr_root, curr_n = new_edges, new_id[curr_root], cnt + 1
+
+        for step in reversed(history):
+            cycle, min_in, entering_node = step["cycle"], step["min_in"], step["entering_node"]
+            v_star = next((entering_node[eid] for eid in chosen_eids if eid in entering_node), None)
+            for v in cycle:
+                if v != v_star:
+                    chosen_eids.add(min_in[v][3])
+
+        chosen_edges = [orig_edges[eid] for eid in chosen_eids]
+        return chosen_edges, sum(w for _, _, w in chosen_edges)
+\end{lstlisting}
+
+\subsection*{1.3 Theoretical Complexity Analysis}
+\begin{itemize}
+    \item \textbf{Contraction Iterations}: In each iteration, at least one directed cycle of size $\ge 2$ is contracted into a single vertex. Therefore, the number of vertices decreases by at least 1 per contraction, bounding the contraction depth by $\mathcal{O}(|V|)$.
+    \item \textbf{Work Per Iteration}: Finding the minimum incoming edge takes $\mathcal{O}(|E|)$ time. Detecting cycles takes $\mathcal{O}(|V|)$ time. Edge reweighting takes $\mathcal{O}(|E|)$ time.
+    \item \textbf{Total Time Complexity}: $\mathcal{O}(|V| \cdot |E|)$.
+    \item \textbf{Auxiliary Space Complexity}: $\mathcal{O}(|V| + |E|)$ to store the contraction history and graph edges.
+\end{itemize}
+
+\subsection*{1.4 Execution Output \& Verification}
+\begin{lstlisting}
+================================================================================
+ASSIGNMENT 1: MINIMUM-COST ONE-WAY DELIVERY NETWORK USING MINIMUM ARBORESCENCE
+================================================================================
+
+Available One-Way Delivery Routes:
+--------------------------------------------------
+  Central_Warehouse  -> Center_A     | Cost: 10.0
+  Central_Warehouse  -> Center_B     | Cost: 15.0
+  Central_Warehouse  -> Center_C     | Cost: 20.0
+  Center_A           -> Center_B     | Cost: 2.0
+  Center_B           -> Center_C     | Cost: 3.0
+  Center_C           -> Center_A     | Cost: 4.0
+  Center_B           -> Center_D     | Cost: 5.0
+  Center_D           -> Center_E     | Cost: 6.0
+  Center_E           -> Center_D     | Cost: 7.0
+  Center_C           -> Center_E     | Cost: 8.0
+
+==================================================
+OPTIMAL DELIVERY NETWORK (Minimum Arborescence):
+==================================================
+  Route: Center_A           -> Center_B     (Cost: 2.0)
+  Route: Center_B           -> Center_C     (Cost: 3.0)
+  Route: Center_B           -> Center_D     (Cost: 5.0)
+  Route: Center_D           -> Center_E     (Cost: 6.0)
+  Route: Central_Warehouse  -> Center_A     (Cost: 10.0)
+--------------------------------------------------
+Total Minimum Delivery Network Cost: 26.0
+
+Constraint Verification:
+  1. Central Warehouse incoming routes: 0 (Expected: 0)
+  2. Each regional center has exactly 1 incoming route: PASS
+
+Delivery Tree Root: [Central_Warehouse]
+|-- -> [Center_A] (Route Cost: 10.0)
+    |-- -> [Center_B] (Route Cost: 2.0)
+        |-- -> [Center_C] (Route Cost: 3.0)
+        |-- -> [Center_D] (Route Cost: 5.0)
+            |-- -> [Center_E] (Route Cost: 6.0)
+================================================================================
+\end{lstlisting}
+
+\newpage
+
+% ==============================================================================
+% ASSIGNMENT 2: EMERGENCY ROUTE FINDER
+% ==============================================================================
+\section*{Assignment 2: Emergency Route Finder Using Dijkstra’s Algorithm}
+
+\subsection*{2.1 Problem Statement and Mathematical Formulation}
+\textbf{Problem Description}: An urban emergency ambulance service must calculate the fastest travel-time trajectory from its initial station to a trauma-care hospital. The city transit infrastructure is modeled as a weighted graph $G = (V, E)$, where vertices $V$ represent street intersections and edges $E$ represent arterial roads. Each roadway $(u, v) \in E$ has a non-negative travel latency $w(u, v) \ge 0$ determined by distance and traffic speed limits.
+
+\textbf{Mathematical Formulation}:\\
+Given a source intersection $s \in V$ and destination hospital $h \in V$, find a simple path $P = \langle s = v_0, v_1, \dots, v_k = h \rangle$ minimizing the total transit duration:
+\[
+\min_{P} \sum_{i=0}^{k-1} w(v_i, v_{i+1})
+\]
+
+\textbf{Dijkstra's Algorithm Invariant and Correctness}:
+\begin{itemize}
+    \item Maintain an array of tentative distances $d: V \to \mathbb{R}^+ \cup \{\infty\}$ with $d[s] = 0$ and $d[v] = \infty$ for all $v \neq s$.
+    \item Maintain a min-priority queue $Q$ containing pairs $(d[v], v)$.
+    \item \textbf{Greedy Choice}: At each extraction step, pop the vertex $u \in Q$ with minimum $d[u]$.
+    \item \textbf{Inductive Invariant}: Because all edge weights are non-negative ($w(e) \ge 0$), any sub-path of an optimal path is itself optimal, and the tentative distance $d[u]$ upon extraction is strictly equal to the true shortest path distance $\delta(s, u)$.
+    \item \textbf{Edge Relaxation}: For each adjacent intersection $v \in \text{Adj}[u]$, if $d[u] + w(u, v) < d[v]$, update $d[v] \gets d[u] + w(u, v)$ and record $\text{pred}[v] \gets u$.
+\end{itemize}
+
+\subsection*{2.2 Python Implementation (\texttt{emergency\_route\_finder.py})}
+\begin{lstlisting}[language=Python]
+import heapq
+from typing import Dict, List, Optional, Tuple
+
+class CityMap:
+    def __init__(self):
+        self.adj: Dict[str, List[Tuple[str, float]]] = {}
+
+    def add_road(self, u: str, v: str, travel_time: float, bidirectional: bool = True) -> None:
+        if travel_time < 0:
+            raise ValueError("Travel time must be non-negative.")
+        self.adj.setdefault(u, []).append((v, travel_time))
+        if bidirectional:
+            self.adj.setdefault(v, []).append((u, travel_time))
+
+    def dijkstra(self, start: str, destination: Optional[str] = None):
+        distances = {node: float("inf") for node in self.adj}
+        predecessors = {node: None for node in self.adj}
+        distances[start] = 0.0
+        pq = [(0.0, start)]
+
+        while pq:
+            curr_dist, u = heapq.heappop(pq)
+            if curr_dist > distances[u]:
+                continue
+            if destination is not None and u == destination:
+                break
+            for v, weight in self.adj.get(u, []):
+                new_dist = curr_dist + weight
+                if new_dist < distances[v]:
+                    distances[v] = new_dist
+                    predecessors[v] = u
+                    heapq.heappush(pq, (new_dist, v))
+
+        return distances, predecessors
+
+    def find_shortest_emergency_route(self, start: str, destination: str):
+        distances, predecessors = self.dijkstra(start, destination)
+        if distances.get(destination, float("inf")) == float("inf"):
+            return None, float("inf"), []
+
+        path, curr = [], destination
+        while curr is not None:
+            path.append(curr); curr = predecessors[curr]
+        path.reverse()
+
+        step_details = []
+        for i in range(len(path) - 1):
+            u_node, v_node = path[i], path[i + 1]
+            seg_time = distances[v_node] - distances[u_node]
+            step_details.append((u_node, v_node, seg_time, distances[v_node]))
+
+        return path, distances[destination], step_details
+\end{lstlisting}
+
+\subsection*{2.3 Theoretical Complexity Analysis}
+\begin{itemize}
+    \item \textbf{Binary Min-Heap Queue}: Each vertex is inserted into the priority queue and extracted at most once, contributing $\mathcal{O}(|V| \log |V|)$ operations.
+    \item \textbf{Edge Relaxations}: Each directed edge is traversed and relaxed at most once, contributing $\mathcal{O}(|E| \log |V|)$ priority queue updates.
+    \item \textbf{Total Time Complexity}: $\mathcal{O}((|V| + |E|) \log |V|)$.
+    \item \textbf{Auxiliary Space Complexity}: $\mathcal{O}(|V| + |E|)$ to store adjacency lists, distance dictionaries, and predecessors.
+\end{itemize}
+
+\subsection*{2.4 Execution Output \& Verification}
+\begin{lstlisting}
+================================================================================
+ASSIGNMENT 2: EMERGENCY ROUTE FINDER USING DIJKSTRA'S ALGORITHM
+================================================================================
+
+Dispatch Request:
+  Current Location : Ambulance_Station
+  Destination      : City_General_Hospital
+
+============================================================
+OPTIMAL EMERGENCY NAVIGATION PLAN:
+============================================================
+Total Travel Time: 12.50 minutes
+Route Path       : Ambulance_Station -> North_Cross -> East_Gate -> South_Junction -> City_General_Hospital
+
+Turn-by-Turn Directions:
+------------------------------------------------------------
+Segment | From               -> To                     | Time    | Elapsed
+------------------------------------------------------------
+Step 1  | Ambulance_Station  -> North_Cross            |  4.0 m  |  4.0 m
+Step 2  | North_Cross        -> East_Gate              |  3.0 m  |  7.0 m
+Step 3  | East_Gate          -> South_Junction         |  2.0 m  |  9.0 m
+Step 4  | South_Junction     -> City_General_Hospital  |  3.5 m  | 12.5 m
+------------------------------------------------------------
+
+============================================================
+NEAREST EMERGENCY HOSPITAL SELECTION:
+============================================================
+Available Hospitals : Apollo_Hospital, City_General_Hospital
+Quickest Reachable  : City_General_Hospital
+Minimum Travel Time : 12.50 minutes
+Recommended Route   : Ambulance_Station -> North_Cross -> East_Gate -> South_Junction -> City_General_Hospital
+================================================================================
+\end{lstlisting}
+
+\newpage
+
+% ==============================================================================
+% ASSIGNMENT 3: CURRENCY ARBITRAGE
+% ==============================================================================
+\section*{Assignment 3: Currency Exchange Arbitrage Detection Using Bellman–Ford}
+
+\subsection*{3.1 Problem Statement and Mathematical Formulation}
+\textbf{Problem Description}: An algorithmic trading system ingests bilateral foreign exchange conversion rates between international currencies. An \textit{arbitrage opportunity} represents a closed sequence of currency transactions that generates a risk-free net profit solely through conversion discrepancies.
+
+\textbf{Mathematical Reduction to Negative-Weight Cycles}:\\
+Let $V$ represent currencies, and let $R(u, v) > 0$ denote the exchange rate converting 1 unit of currency $u$ into $R(u, v)$ units of currency $v$.
+A sequence of conversions along a cycle $C = \langle c_1, c_2, \dots, c_k, c_1 \rangle$ produces an arbitrage profit if the product of exchange rates exceeds unity:
+\[
+\prod_{i=1}^k R(c_i, c_{i+1}) > 1 \quad (\text{with } c_{k+1} = c_1)
+\]
+Applying the strictly monotonic natural logarithm function preserves the inequality:
+\[
+\ln \left( \prod_{i=1}^k R(c_i, c_{i+1}) \right) = \sum_{i=1}^k \ln R(c_i, c_{i+1}) > 0
+\]
+Multiplying throughout by $-1$ reverses the relational direction:
+\[
+\sum_{i=1}^k \left( -\ln R(c_i, c_{i+1}) \right) < 0
+\]
+Defining the edge weight as $w(u, v) = -\ln R(u, v)$, the problem of detecting an arbitrage opportunity reduces strictly to \textbf{finding a negative-weight cycle} in a directed graph.
+
+\textbf{Bellman--Ford Negative Cycle Detection}:
+\begin{enumerate}
+    \item Initialize distance $d[v] = 0$ for all vertices $v \in V$, equivalent to connecting a virtual super-source to all vertices with weight 0.
+    \item Relax all directed edges $|V| - 1$ times.
+    \item On the $|V|$-th iteration, if there exists an edge $(u, v)$ such that $d[u] + w(u, v) < d[v]$, a negative-weight cycle exists.
+    \item \textbf{Cycle Extraction}: Trace parent pointers backward $|V|$ times from $v$ to guarantee stepping into the cycle, then traverse until the cycle repeats. Reverse the traversed vertices to reconstruct the forward trade sequence.
+\end{enumerate}
+
+\subsection*{3.2 Python Implementation (\texttt{currency\_arbitrage.py})}
+\begin{lstlisting}[language=Python]
+import math
+from typing import Dict, List, Optional, Set, Tuple
+
+class CurrencyExchangeMarket:
+    def __init__(self):
+        self.currencies: Set[str] = set()
+        self.rates: Dict[Tuple[str, str], float] = {}
+        self.edges: List[Tuple[str, str, float, float]] = []
+
+    def add_exchange_rate(self, from_curr: str, to_curr: str, rate: float) -> None:
+        if rate <= 0:
+            raise ValueError("Rate must be strictly positive.")
+        self.currencies.add(from_curr); self.currencies.add(to_curr)
+        self.rates[(from_curr, to_curr)] = rate
+        self.edges.append((from_curr, to_curr, rate, -math.log(rate)))
+
+    def detect_arbitrage(self) -> Tuple[bool, Optional[List[str]], float, float]:
+        curr_list = sorted(list(self.currencies))
+        n = len(curr_list)
+        dist = {c: 0.0 for c in curr_list}
+        parent = {c: None for c in curr_list}
+
+        eps = 1e-9
+        for _ in range(n - 1):
+            for u, v, rate, weight in self.edges:
+                if dist[u] + weight < dist[v] - eps:
+                    dist[v] = dist[u] + weight
+                    parent[v] = u
+
+        cycle_node = None
+        for u, v, rate, weight in self.edges:
+            if dist[u] + weight < dist[v] - eps:
+                cycle_node = v
+                break
+
+        if cycle_node is None:
+            return False, None, 1.0, 0.0
+
+        curr = cycle_node
+        for _ in range(n):
+            curr = parent[curr]
+
+        cycle_start, cycle = curr, [curr]
+        curr = parent[cycle_start]
+        while curr != cycle_start:
+            cycle.append(curr); curr = parent[curr]
+        cycle.append(cycle_start)
+        cycle.reverse()
+
+        multiplier = 1.0
+        for i in range(len(cycle) - 1):
+            multiplier *= self.rates[(cycle[i], cycle[i + 1])]
+
+        return True, cycle, multiplier, (multiplier - 1.0) * 100.0
+\end{lstlisting}
+
+\subsection*{3.3 Theoretical Complexity Analysis}
+\begin{itemize}
+    \item \textbf{Relaxation Passes}: Performing $|V| - 1$ passes across all $|E|$ edges takes $\mathcal{O}(|V| \cdot |E|)$ operations.
+    \item \textbf{Cycle Verification \& Traceback}: The $|V|$-th check inspects $|E|$ edges in $\mathcal{O}(|E|)$ time, and walking parent pointers takes $\mathcal{O}(|V|)$ time.
+    \item \textbf{Total Time Complexity}: $\mathcal{O}(|V| \cdot |E|)$.
+    \item \textbf{Auxiliary Space Complexity}: $\mathcal{O}(|V| + |E|)$.
+\end{itemize}
+
+\subsection*{3.4 Execution Output \& Verification}
+\begin{lstlisting}
+================================================================================
+ASSIGNMENT 3: CURRENCY EXCHANGE ARBITRAGE DETECTION USING BELLMAN-FORD
+================================================================================
+
+[SCENARIO 1] Foreign Exchange Market with Inefficiencies (Arbitrage Exists)
+--------------------------------------------------------------------------------
+Market Exchange Rates and Logarithmic Weights (-ln(Rate)):
+  USD -> EUR : Rate = 0.9200    | Edge Weight = +0.08338
+  EUR -> USD : Rate = 1.0800    | Edge Weight = -0.07696
+  EUR -> GBP : Rate = 0.8600    | Edge Weight = +0.15082
+  GBP -> EUR : Rate = 1.1500    | Edge Weight = -0.13976
+  GBP -> JPY : Rate = 190.0000  | Edge Weight = -5.24702
+  JPY -> GBP : Rate = 0.0052    | Edge Weight = +5.25910
+  ... (and other currency pairs)
+
+>>> ARBITRAGE DETECTED! <<<
+Arbitrage Cycle     : USD -> EUR -> GBP -> JPY -> USD
+Effective Multiplier: 1.022230
+Theoretical Profit  : +2.22%
+
+Simulating Arbitrage Execution with Initial Capital: 10,000.00 USD
+---------------------------------------------------------------------------
+Step   | Trade            | Exchange Rate  | Resulting Amount      
+---------------------------------------------------------------------------
+Step 1  | USD -> EUR       | 0.92000        |       9,200.00 EUR
+Step 2  | EUR -> GBP       | 0.86000        |       7,912.00 GBP
+Step 3  | GBP -> JPY       | 190.00000      |   1,503,280.00 JPY
+Step 4  | JPY -> USD       | 0.00680        |      10,222.30 USD
+---------------------------------------------------------------------------
+Final Amount : 10,222.30 USD
+Net Profit   : 222.30 USD (+2.22%)
+
+================================================================================
+[SCENARIO 2] Perfectly Efficient Market (No Arbitrage)
+--------------------------------------------------------------------------------
+Result: No negative-weight cycle detected.
+Market is efficient; no risk-free arbitrage profit is possible.
+================================================================================
+\end{lstlisting}
+
+\newpage
+
+% ==============================================================================
+% ASSIGNMENT 4: PROJECT SCHEDULING (DAG)
+% ==============================================================================
+\section*{Assignment 4: Project Scheduling Using a Directed Acyclic Graph (DAG)}
+
+\subsection*{4.1 Problem Statement and Mathematical Formulation}
+\textbf{Problem Description}: A complex software engineering project is subdivided into discrete activities with precedence dependencies. Tasks cannot commence until all predecessor tasks have completely finished. The objectives are:
+\begin{enumerate}
+    \item Model tasks and precedence relations as an Activity-on-Node (AON) Directed Acyclic Graph (DAG).
+    \item Establish a valid topological linear task dispatch sequence.
+    \item Compute the Earliest Project Completion Time using the Critical Path Method (CPM).
+    \item Identify zero-slack bottleneck tasks constituting the project's Critical Path.
+\end{enumerate}
+
+\textbf{Mathematical Formulation (Critical Path Method)}:
+\begin{itemize}
+    \item Let $G = (V, E)$ be a DAG where each vertex $v \in V$ has a non-negative duration $d(v) \ge 0$, and directed edges $(u, v) \in E$ indicate that task $u$ precedes task $v$.
+    \item \textbf{Topological Sort (Kahn's Algorithm)}: Construct an in-degree array $d_{\text{in}}[v]$. Maintain a queue of zero-indegree tasks. Iteratively dequeue task $u$, append it to the topological order, and decrement $d_{\text{in}}[v]$ for all successors $v \in \text{Adj}[u]$. If the count of sorted tasks is $< |V|$, a circular dependency exists.
+    \item \textbf{Forward Pass (Earliest Times)}: Process tasks in topological order:
+    \[
+    ES[v] = \begin{cases} 0 & \text{if } \text{Pred}[v] = \emptyset \\ \max_{u \in \text{Pred}[v]} EF[u] & \text{otherwise} \end{cases}, \quad EF[v] = ES[v] + d(v)
+    \]
+    The minimum project duration is $T_{\text{project}} = \max_{v \in V} EF[v]$.
+    \item \textbf{Backward Pass (Latest Times \& Total Float)}: Process tasks in reverse topological order:
+    \[
+    LF[v] = \begin{cases} T_{\text{project}} & \text{if } \text{Adj}[v] = \emptyset \\ \min_{w \in \text{Adj}[v]} LS[w] & \text{otherwise} \end{cases}, \quad LS[v] = LF[v] - d(v)
+    \]
+    Total Float (Slack):
+    \[
+    \text{Slack}[v] = LS[v] - ES[v] = LF[v] - EF[v]
+    \]
+    A task $v$ is \textit{critical} if and only if $\text{Slack}[v] = 0$.
+\end{itemize}
+
+\subsection*{4.2 Python Implementation (\texttt{project\_scheduling.py})}
+\begin{lstlisting}[language=Python]
+from collections import defaultdict, deque
+from dataclasses import dataclass
+from typing import Dict, List, Optional
+
+@dataclass
+class Task:
+    task_id: str; name: str; duration: float
+
+class ProjectDAG:
+    def __init__(self):
+        self.tasks: Dict[str, Task] = {}
+        self.adj = defaultdict(list)
+        self.pred = defaultdict(list)
+        self.in_degree = defaultdict(int)
+
+    def add_task(self, task_id: str, name: str, duration: float) -> None:
+        self.tasks[task_id] = Task(task_id, name, duration)
+        _ = self.in_degree[task_id]
+
+    def add_dependency(self, prereq_id: str, dependent_id: str) -> None:
+        self.adj[prereq_id].append(dependent_id)
+        self.pred[dependent_id].append(prereq_id)
+        self.in_degree[dependent_id] += 1
+
+    def topological_sort(self) -> Optional[List[str]]:
+        in_deg = dict(self.in_degree)
+        queue = deque([t for t in self.tasks if in_deg[t] == 0])
+        topo_order = []
+        while queue:
+            u = queue.popleft(); topo_order.append(u)
+            for v in self.adj[u]:
+                in_deg[v] -= 1
+                if in_deg[v] == 0: queue.append(v)
+        return topo_order if len(topo_order) == len(self.tasks) else None
+
+    def calculate_schedule(self):
+        topo_order = self.topological_sort()
+        if topo_order is None: return None
+
+        es, ef = {}, {}
+        for u in topo_order:
+            es[u] = 0.0 if not self.pred[u] else max(ef[p] for p in self.pred[u])
+            ef[u] = es[u] + self.tasks[u].duration
+
+        t_project = max(ef.values()) if ef else 0.0
+        ls, lf = {}, {}
+        for u in reversed(topo_order):
+            lf[u] = t_project if not self.adj[u] else min(ls[s] for s in self.adj[u])
+            ls[u] = lf[u] - self.tasks[u].duration
+
+        schedule = {}
+        for u in topo_order:
+            slack = ls[u] - es[u]
+            schedule[u] = {"task": self.tasks[u], "ES": es[u], "EF": ef[u],
+                           "LS": ls[u], "LF": lf[u], "slack": slack, "is_critical": abs(slack) < 1e-9}
+        return schedule
+\end{lstlisting}
+
+\subsection*{4.3 Theoretical Complexity Analysis}
+\begin{itemize}
+    \item \textbf{Topological Sort}: Kahn's algorithm processes each vertex and each edge exactly once, executing in $\mathcal{O}(|V| + |E|)$ time.
+    \item \textbf{CPM Passes}: The forward pass evaluates in-edges in $\mathcal{O}(|V| + |E|)$ time. The backward pass evaluates out-edges in $\mathcal{O}(|V| + |E|)$ time.
+    \item \textbf{Total Time Complexity}: $\mathcal{O}(|V| + |E|)$ (Linear in the size of the DAG).
+    \item \textbf{Auxiliary Space Complexity}: $\mathcal{O}(|V| + |E|)$.
+\end{itemize}
+
+\subsection*{4.4 Execution Output \& Verification}
+\begin{lstlisting}
+================================================================================
+ASSIGNMENT 4: PROJECT SCHEDULING USING DIRECTED ACYCLIC GRAPH (DAG)
+================================================================================
+
+Project Tasks and Estimated Durations:
+-----------------------------------------------------------------
+  T1  : Requirements & Planning        |  4 days | Depends on: None
+  T2  : System Architecture Design     |  5 days | Depends on: T1
+  T3  : Database Schema & Setup        |  3 days | Depends on: T2
+  T4  : Backend API Development        |  8 days | Depends on: T2, T3
+  T5  : Frontend UI Design & Coding    |  6 days | Depends on: T2
+  T6  : Integration & Testing          |  5 days | Depends on: T4, T5
+  T7  : User Acceptance Testing (UAT)  |  3 days | Depends on: T6
+  T8  : Deployment & Release           |  2 days | Depends on: T7
+
+=================================================================
+VALID TASK EXECUTION ORDER (Topological Sort):
+=================================================================
+T1 -> T2 -> T3 -> T5 -> T4 -> T6 -> T7 -> T8
+Any task executes strictly after its prerequisites are met.
+
+================================================================================
+PROJECT SCHEDULE & CRITICAL PATH ANALYSIS (CPM):
+================================================================================
+Task | Name                         | Dur  | ES    | EF    | LS    | LF    | Slack | Status
+--------------------------------------------------------------------------------
+T1   | Requirements & Planning      |   4d |    0d |    4d |    0d |    4d |    0d | CRITICAL *
+T2   | System Architecture Design   |   5d |    4d |    9d |    4d |    9d |    0d | CRITICAL *
+T3   | Database Schema & Setup      |   3d |    9d |   12d |    9d |   12d |    0d | CRITICAL *
+T5   | Frontend UI Design & Coding  |   6d |    9d |   15d |   14d |   20d |    5d | Flexible
+T4   | Backend API Development      |   8d |   12d |   20d |   12d |   20d |    0d | CRITICAL *
+T6   | Integration & Testing        |   5d |   20d |   25d |   20d |   25d |    0d | CRITICAL *
+T7   | User Acceptance Testing (UAT) |   3d |   25d |   28d |   25d |   28d |    0d | CRITICAL *
+T8   | Deployment & Release         |   2d |   28d |   30d |   28d |   30d |    0d | CRITICAL *
+--------------------------------------------------------------------------------
+EARLIEST PROJECT COMPLETION TIME: 30 days
+
+Critical Path(s) [Bottlenecks determining project duration]:
+  * T1 -> T2 -> T3 -> T4 -> T6 -> T7 -> T8
+    T1 (Requirements & Planning) -> T2 (System Architecture Design) -> T3 (Database Schema & Setup) -> T4 (Backend API Development) -> T6 (Integration & Testing) -> T7 (User Acceptance Testing (UAT)) -> T8 (Deployment & Release)
+================================================================================
+\end{lstlisting}
+
+\newpage
+
+% ==============================================================================
+% ASSIGNMENT 5: CAMPUS NAVIGATION (BFS)
+% ==============================================================================
+\section*{Assignment 5: Campus Navigation Using Breadth-First Search (BFS)}
+
+\subsection*{5.1 Problem Statement and Mathematical Formulation}
+\textbf{Problem Description}: A university navigation terminal computes walking trajectories between university buildings. Because all designated walkways between adjacent buildings represent homogeneous pedestrian links, the goal is to discover the path consisting of the \textbf{minimum number of walkway segments} (minimum edge hops) connecting the origin to the destination building.
+
+\textbf{Mathematical Model: Shortest Paths on Unweighted Graphs}:\\
+Let $G = (V, E)$ be an unweighted, undirected graph where vertices $V$ denote campus structures and edges $E$ denote direct walkways. For a query pair $(s, t) \in V \times V$, find a path $P = \langle s = u_0, u_1, \dots, u_m = t \rangle$ minimizing path length $|P| = m$.
+
+\textbf{Breadth-First Search (BFS) Optimality}:
+\begin{itemize}
+    \item BFS explores the graph frontier level by level using a FIFO queue.
+    \item \textbf{Level Invariant}: All vertices at distance $k$ from $s$ are dequeued and examined before any vertex at distance $k + 1$.
+    \item When the destination building $t$ is first discovered, the recorded distance $\text{dist}[t]$ is guaranteed to be the exact unweighted shortest path distance $\delta(s, t)$.
+    \item Parent pointers $\text{parent}[v]$ enable linear backtracking to reconstruct the shortest route.
+\end{itemize}
+
+\subsection*{5.2 Python Implementation (\texttt{campus\_navigation.py})}
+\begin{lstlisting}[language=Python]
+from collections import defaultdict, deque
+from typing import Dict, List, Optional, Set, Tuple
+
+class CampusGraph:
+    def __init__(self):
+        self.adj: Dict[str, List[str]] = defaultdict(list)
+        self.buildings: Set[str] = set()
+
+    def add_walkway(self, b1: str, b2: str) -> None:
+        self.buildings.add(b1); self.buildings.add(b2)
+        self.adj[b1].append(b2); self.adj[b2].append(b1)
+
+    def find_shortest_route(self, start: str, destination: str) -> Tuple[Optional[int], Optional[List[str]]]:
+        if start not in self.buildings or destination not in self.buildings:
+            raise ValueError("Building not recognized.")
+        if start == destination:
+            return 0, [start]
+
+        visited: Set[str] = {start}
+        parent: Dict[str, Optional[str]] = {start: None}
+        distance: Dict[str, int] = {start: 0}
+        queue: deque[str] = deque([start])
+
+        found = False
+        while queue:
+            curr = queue.popleft()
+            for neighbor in self.adj[curr]:
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    parent[neighbor] = curr
+                    distance[neighbor] = distance[curr] + 1
+                    queue.append(neighbor)
+                    if neighbor == destination:
+                        found = True; break
+            if found: break
+
+        if not found and destination not in distance:
+            return None, None
+
+        path, curr_node = [], destination
+        while curr_node is not None:
+            path.append(curr_node); curr_node = parent[curr_node]
+        path.reverse()
+        return distance[destination], path
+
+    def find_buildings_within_distance(self, start: str, max_segments: int) -> Dict[str, int]:
+        visited, distance = {start}, {start: 0}
+        queue = deque([start])
+        while queue:
+            curr = queue.popleft()
+            if distance[curr] >= max_segments: continue
+            for neighbor in self.adj[curr]:
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    distance[neighbor] = distance[curr] + 1
+                    queue.append(neighbor)
+        return distance
+\end{lstlisting}
+
+\subsection*{5.3 Theoretical Complexity Analysis}
+\begin{itemize}
+    \item \textbf{Vertex Visits}: Each vertex enters and leaves the queue at most once: $\mathcal{O}(|V|)$.
+    \item \textbf{Edge Explorations}: In an undirected graph, each edge $\{u, v\}$ is traversed at most twice (once from $u$ and once from $v$): $\mathcal{O}(|E|)$.
+    \item \textbf{Total Time Complexity}: $\mathcal{O}(|V| + |E|)$.
+    \item \textbf{Auxiliary Space Complexity}: $\mathcal{O}(|V|)$ for the queue, visited set, distance map, and parent dictionary.
+\end{itemize}
+
+\subsection*{5.4 Execution Output \& Verification}
+\begin{lstlisting}
+================================================================================
+ASSIGNMENT 5: CAMPUS NAVIGATION USING BREADTH-FIRST SEARCH (BFS)
+================================================================================
+
+Campus Map loaded with 17 buildings and 16 walkways.
+
+---------------------------------------------------------------------------
+Navigation Query 1: Route from 'Hostel_Block_A' to 'Computer_Science_Dept'
+Fewest Walkway Segments : 4 segments
+Optimal Navigation Path : Hostel_Block_A -> Cafeteria -> Student_Center -> Central_Library -> Computer_Science_Dept
+
+Turn-by-turn navigation steps:
+  Step 1: Walk from [Hostel_Block_A] to [Cafeteria]
+  Step 2: Walk from [Cafeteria] to [Student_Center]
+  Step 3: Walk from [Student_Center] to [Central_Library]
+  Step 4: Walk from [Central_Library] to [Computer_Science_Dept]
+
+---------------------------------------------------------------------------
+Navigation Query 2: Route from 'Main_Gate' to 'Sports_Complex'
+Fewest Walkway Segments : 4 segments
+Optimal Navigation Path : Main_Gate -> Admin_Building -> Central_Library -> Student_Center -> Sports_Complex
+
+---------------------------------------------------------------------------
+Navigation Query 3: Route from 'Central_Library' to 'Central_Library'
+Segments: 0, Path: Central_Library
+
+---------------------------------------------------------------------------
+Navigation Query 4: Route from 'Main_Gate' to 'Off_Campus_Observatory'
+Result: Destination [Off_Campus_Observatory] is unreachable on foot from [Main_Gate].
+
+---------------------------------------------------------------------------
+Walkability Radius: Buildings within 2 walkway segments from 'Student_Center':
+  * Cafeteria                 : 1 segment(s) away
+  * Central_Library           : 1 segment(s) away
+  * Sports_Complex            : 1 segment(s) away
+  * Admin_Building            : 2 segment(s) away
+  * Computer_Science_Dept     : 2 segment(s) away
+  * Health_Center             : 2 segment(s) away
+  * Hostel_Block_A            : 2 segment(s) away
+  * Hostel_Block_B            : 2 segment(s) away
+================================================================================
+\end{lstlisting}
+
+\end{document}
