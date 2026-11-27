@@ -4,6 +4,9 @@ matplotlib
 nltk
 numpy
 pandas
+scikit-fuzzy
 scikit-learn
 seaborn
 tqdm
+seaborn
+uv
